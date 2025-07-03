@@ -1,19 +1,19 @@
-const loadFact = async () => {
+const loadjoke = async () => {
     try{
-        const fetchFact = await fetch('https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single',{
+        const fetchjoke = await fetch('https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single',{
             headers:{
                 Accept:'application/json'
             }
         });
 
-        const factdata = await fetchFact.json()
+        const factdata = await fetchjoke.json()
         document.getElementById('jokecontainer').innerHTML = factdata.joke
     }
     catch(error){
         console.log(error)
     }
 }
-document.getElementById('jokebtn').addEventListener("click",loadFact)
+document.getElementById('jokebtn').addEventListener("click",loadjoke)
 
 
 
