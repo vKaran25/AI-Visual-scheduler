@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<h2>Search Results</h2>
+<div class="row">
+    {% for post in posts %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                {% if post.photo %}
+                    <img src="{{ post.photo.url }}" class="card-img-top" alt="Post Photo">
+                {% endif %}
+                <div class="card-body">
+                    <p class="card-text"><strong>{{ post.user.username }}</strong></p>
+                    <p class="card-text">{{ post.text }}</p>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <p>No results found.</p>
+    {% endfor %}
+</div>
+
+{% endblock %}

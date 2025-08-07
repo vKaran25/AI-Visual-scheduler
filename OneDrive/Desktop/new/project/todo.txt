@@ -1,0 +1,8 @@
+HOW TO START PROJECT LOCALLY
+
+-- this project runs uv package manager(faster alternative to pip but not as much stable)
+1. activate virtual env using - .uv/Scripts/activate
+2. uv pip install requirements.txt
+3. than go in project directory - cd tweeteer
+4. run - python manage.py runserver
+
