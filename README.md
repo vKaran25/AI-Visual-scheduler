@@ -14,11 +14,4 @@ A beginner-friendly Django project built while learning from Chai aur Code YouTu
 - 🧩 Planned integration with **React** and **TailwindCSS** for a modern frontend
 - 📦 Project is structured for easy local setup
 
----
 
-## 📸 Demo Screenshots (Optional)
-
-You can add screenshots here later like:
-
-```bash
-[Insert screenshots showing login, post list, create/edit/delete pages]
