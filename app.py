@@ -94,6 +94,7 @@ def slots_for_date(date_str: str):
 def compute_free_blocks(start_dt_str: str, total_hours: float, max_days: int = MAX_SEARCH_DAYS):
     start_dt = datetime.fromisoformat(start_dt_str)
     total_minutes = max(0, round(total_hours * 60))
+    total_minutes = round(total_minutes / 5) * 5
     allocated = []
     remaining = total_minutes
     current_dt = start_dt
@@ -102,15 +103,31 @@ def compute_free_blocks(start_dt_str: str, total_hours: float, max_days: int = M
         if remaining <= 0: break
         date_str = current_dt.strftime('%Y-%m-%d')
         start_min = current_dt.hour * 60 + current_dt.minute if current_dt.date() == start_dt.date() else 0
-        merged_busy = merge_slots([(s['startMinutes'], s['endMinutes']) for s in slots_for_date(date_str)])
+        rem = start_min % 5
+        if rem != 0: start_min += (5 - rem)
         
+        merged_busy = merge_slots([(s['startMinutes'], s['endMinutes']) for s in slots_for_date(date_str)])
+
         free_gaps = []
         cursor = start_min
         for bstart, bend in merged_busy:
             if bend <= cursor: continue
-            if bstart > cursor: free_gaps.append((cursor, bstart))
+            if bstart > cursor:
+                gs, ge = cursor, bstart
+                rm = gs % 5
+                if rm != 0: gs += (5 - rm)
+                ge -= (ge % 5)
+                if ge - gs >= 15:
+                    free_gaps.append((gs, ge))
             cursor = max(cursor, bend)
-        if cursor < 1440: free_gaps.append((cursor, 1440))
+            
+        if cursor < 1440:
+            gs, ge = cursor, 1440
+            rm = gs % 5
+            if rm != 0: gs += (5 - rm)
+            ge -= (ge % 5)
+            if ge - gs >= 15:
+                free_gaps.append((gs, ge))
 
         for gstart, gend in free_gaps:
             if remaining <= 0: break
@@ -176,22 +193,22 @@ def get_managed_calendar_id(service):
 
 def sync_gcal_events(force=False):
     global busy_slots, _counter, last_gcal_sync_time
-    
+
     if not force and time.time() - last_gcal_sync_time < GCAL_CACHE_DURATION:
         return
-        
+
     service = get_calendar_service()
     if not service: return
-    
+
     # Retain non-gcal manual slots
     busy_slots = [s for s in busy_slots if not s.get('is_gcal', False)]
-    
+
     now = datetime.utcnow().isoformat() + 'Z'
     end = (datetime.utcnow() + timedelta(days=MAX_SEARCH_DAYS)).isoformat() + 'Z'
-    
+
     managed_cal_id = get_managed_calendar_id(service)
     cals_to_sync = ['primary', managed_cal_id]
-    
+
     for cal_id in cals_to_sync:
         try:
             events_result = service.events().list(calendarId=cal_id, timeMin=now, timeMax=end,
@@ -200,14 +217,14 @@ def sync_gcal_events(force=False):
                 sdt = event['start'].get('dateTime', event['start'].get('date'))
                 edt = event['end'].get('dateTime', event['end'].get('date'))
                 if 'T' not in sdt: continue  # Skip all-day events for now
-                
+
                 st_dt = datetime.fromisoformat(sdt)
                 end_dt = datetime.fromisoformat(edt)
-                
+
                 start_m = st_dt.hour * 60 + st_dt.minute
                 end_m = end_dt.hour * 60 + end_dt.minute
                 if end_m == 0 and end_dt.date() > st_dt.date(): end_m = 1440
-                
+
                 slot = {
                     'id': _counter,
                     'date': st_dt.strftime('%Y-%m-%d'),
@@ -224,7 +241,7 @@ def sync_gcal_events(force=False):
                 _counter += 1
         except Exception as e:
             print("GCal fetch error for", cal_id, e)
-            
+
     last_gcal_sync_time = time.time()
 
 @app.route('/api/google/status', methods=['GET'])
@@ -284,16 +301,16 @@ def google_callback():
         state=request.args.get('state')
     )
     flow.redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
-    
+
     code_verifier = session.get('code_verifier')
     if code_verifier:
         flow.fetch_token(authorization_response=request.url, code_verifier=code_verifier)
     else:
         flow.fetch_token(authorization_response=request.url)
-    
+
     with open(TOKEN_PATH, 'wb') as token:
         pickle.dump(flow.credentials, token)
-        
+
     sync_gcal_events()
     return "<script>window.opener ? window.close() : window.location.href='/';</script>"
 
@@ -306,39 +323,40 @@ def handle_chat():
     slack = float(d.get('slack', 0.0))
     start_after = d.get('start_after')
     session_id = str(int(time.time() * 1000))
-    
+
     system_instruction = f"""
-    You are an AI task scheduler assistant. 
+    You are an AI task scheduler assistant.
     1. Read the user's task.
-    2. Break it down into clear steps in hours. Each step MUST have a title and duration_hours.
-    3. Return ONLY a pure JSON array of objects. NO markdown formatting, NO backticks.
+    2. Break it down into clear steps. Each step MUST have a title, duration_hours, and duration_minutes.
+    3. Keep duration_minutes a multiple of 5 (e.g., 0, 5, 10, 15, 20, 30, 45).
+    4. Return ONLY a pure JSON array of objects. NO markdown formatting, NO backticks.
     Format exactly like this:
     [
-        {{"title": "Step 1", "duration_hours": 1.5}},
-        {{"title": "Step 2", "duration_hours": 0.5}}
+        {{"title": "Step 1", "duration_hours": 1, "duration_minutes": 30}},
+        {{"title": "Step 2", "duration_hours": 0, "duration_minutes": 45}}
     ]
     Do not add any other text.
     """
-    
+
     gemini_model = genai.GenerativeModel(
-        model_name=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         system_instruction=system_instruction
     )
-    
+
     try:
         response = gemini_model.generate_content(prompt)
         text = response.text.strip()
         if text.startswith('```json'): text = text[7:]
         if text.startswith('```'): text = text[3:]
         if text.endswith('```'): text = text[:-3]
-        
+
         steps = json.loads(text.strip())
-        
+
         sync_gcal_events()
-        
+
         service = get_calendar_service()
         managed_cal_id = get_managed_calendar_id(service) if service else None
-        
+
         if start_after:
             try:
                 search_start_dt = datetime.fromisoformat(start_after)
@@ -346,23 +364,26 @@ def handle_chat():
                 search_start_dt = datetime.now()
         else:
             search_start_dt = datetime.now()
-            
+
         scheduled_events = []
         global _counter
-        
+
         for step in steps:
             title = step.get('title', 'AI Step')
-            raw_duration = float(step.get('duration_hours', 1.0))
-            slacked_duration = raw_duration * (1.0 + slack)
-            
-            free_res = compute_free_blocks(search_start_dt.isoformat()[:16], slacked_duration)
+            hrs = float(step.get('duration_hours', 1.0))
+            mins = float(step.get('duration_minutes', 0.0))
+            raw_duration_minutes = (hrs * 60) + mins
+            slacked_duration_minutes = raw_duration_minutes * (1.0 + slack)
+            slacked_duration_minutes = round(slacked_duration_minutes / 5) * 5
+
+            free_res = compute_free_blocks(search_start_dt.isoformat()[:16], slacked_duration_minutes / 60.0)
             allocated = free_res.get('allocated', [])
-            
+
             for block in allocated:
                 d_str = block['date']
                 s_str = block['start']
                 e_str = block['end']
-                
+
                 slot = {
                     'id': _counter,
                     'date': d_str,
@@ -380,15 +401,15 @@ def handle_chat():
                 busy_slots.append(slot)
                 _counter += 1
                 scheduled_events.append(slot)
-            
+
             if allocated:
                 last_block = allocated[-1]
                 search_start_dt = datetime.strptime(f"{last_block['date']} {last_block['end']}", "%Y-%m-%d %H:%M")
-        
+
         friendly_text = f"Successfully scheduled {len(steps)} steps!\n\n"
         for ev in scheduled_events:
             friendly_text += f"- **{ev['label']}**: {ev['date']} {ev['start']} - {ev['end']}\n"
-            
+
         return jsonify({"response": friendly_text, "scheduled": scheduled_events, "session_id": session_id})
     except Exception as e:
         print("Gemini/Scheduling error:", e)
@@ -410,7 +431,7 @@ def accept_chat():
             if service and managed_cal_id:
                 slot['is_gcal'] = True
             accepted += 1
-            
+
             if service and managed_cal_id:
                 try:
                     timezone_str = datetime.now().astimezone().strftime('%z')
@@ -450,7 +471,7 @@ def add_slot():
     start, end = d.get('start'), d.get('end')
     if not start or not end: return jsonify({'error': 'Start and end are required'}), 400
     if time_to_minutes(end) <= time_to_minutes(start): return jsonify({'error': 'End must be after start'}), 400
-    
+
     slot = {
         'id': _counter,
         'date': None if d.get('repeatDays') else d.get('date'),
@@ -473,7 +494,7 @@ def update_slot(slot_id):
     d = request.json or {}
     start, end = d.get('start', slot['start']), d.get('end', slot['end'])
     if time_to_minutes(end) <= time_to_minutes(start): return jsonify({'error': 'Invalid times'}), 400
-    
+
     slot.update({
         'date': d.get('date', slot.get('date')),
         'start': start, 'end': end,
