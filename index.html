@@ -689,6 +689,90 @@
 
   /* Scrollbar for main timeline */
   #timeline-wrap { scroll-behavior: smooth; }
+
+  /* ── AI Chat Overlay ────────────────────────────────────── */
+  #ai-chat-panel {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 380px;
+    height: 500px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    z-index: 150;
+    transform: translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform var(--trans), opacity var(--trans);
+  }
+  #ai-chat-panel.open {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+  #ai-chat-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+  }
+  #ai-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    font-size: 18px;
+  }
+  #ai-chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ai-msg {
+    background: rgba(124,106,255,.1);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+    white-space: pre-wrap;
+  }
+  .user-msg {
+    background: var(--surface2);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    align-self: flex-end;
+    max-width: 85%;
+  }
+  #ai-chat-input-area {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ai-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  #ai-prompt {
+    flex: 1;
+    resize: none;
+    height: 40px;
+  }
 </style>
 </head>
 <body>
@@ -702,6 +786,8 @@
     <input type="date" id="date-picker">
     <button id="today-btn">Today</button>
     <div class="spacer"></div>
+    <button id="gcal-conn-btn" style="background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--trans), color var(--trans), border-color var(--trans);">Connect GCal</button>
+    <button id="ai-chat-btn" style="background: var(--accent); border: none; border-radius: var(--radius); color: #fff; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">✨ AI Planner</button>
     <button id="theme-toggle" title="Toggle theme">☀</button>
   </header>
 
@@ -828,6 +914,27 @@
 
 <!-- Toasts -->
 <div id="toast-container"></div>
+
+<!-- AI Chat Panel -->
+<div id="ai-chat-panel">
+  <div id="ai-chat-header">
+    <span>✨ AI Planner</span>
+    <button id="ai-close-btn">✕</button>
+  </div>
+  <div id="ai-chat-messages">
+    <div class="ai-msg">Hi! Describe a task you want to schedule. I will break it down into steps and fit it into your free time locally.</div>
+  </div>
+  <div id="ai-chat-input-area">
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text2);">
+      <span>Slack Factor: <span id="slack-val">0.0</span></span>
+      <input type="range" id="slack-slider" min="0" max="0.4" step="0.1" value="0.0" style="width: 100px;">
+    </div>
+    <div class="ai-input-row">
+      <textarea id="ai-prompt" class="form-input" placeholder="e.g. Set up a new GitHub repo over 2 hours..."></textarea>
+      <button id="ai-send-btn" class="btn-primary" style="width: auto; margin:0;">Send</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── State ─────────────────────────────────────────────────────────
@@ -1320,10 +1427,115 @@ function scrollToCurrent(){
   tWrap.scrollTop = Math.max(0, m - 120);
 }
 
+// ── AI Chat Logic ────────────────────────────────────────────────
+const aiChatBtn = document.getElementById('ai-chat-btn');
+const aiChatPanel = document.getElementById('ai-chat-panel');
+const aiCloseBtn = document.getElementById('ai-close-btn');
+const aiSendBtn = document.getElementById('ai-send-btn');
+const aiPrompt = document.getElementById('ai-prompt');
+const aiMessages = document.getElementById('ai-chat-messages');
+const slackSlider = document.getElementById('slack-slider');
+const slackVal = document.getElementById('slack-val');
+
+slackSlider.addEventListener('input', e => {
+  slackVal.textContent = parseFloat(e.target.value).toFixed(1);
+});
+
+aiChatBtn.addEventListener('click', () => aiChatPanel.classList.toggle('open'));
+aiCloseBtn.addEventListener('click', () => aiChatPanel.classList.remove('open'));
+
+async function sendAiMessage() {
+  const text = aiPrompt.value.trim();
+  if(!text) return;
+  
+  aiPrompt.value = '';
+  
+  const uMsg = document.createElement('div');
+  uMsg.className = 'user-msg';
+  uMsg.innerText = text;
+  aiMessages.appendChild(uMsg);
+  
+  const loadingMsg = document.createElement('div');
+  loadingMsg.className = 'ai-msg';
+  loadingMsg.innerText = 'Thinking... combining steps and free time...';
+  aiMessages.appendChild(loadingMsg);
+  aiMessages.scrollTop = aiMessages.scrollHeight;
+  
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt: text, slack: parseFloat(slackSlider.value) })
+    });
+    const data = await res.json();
+    loadingMsg.remove();
+    
+    const aMsg = document.createElement('div');
+    aMsg.className = 'ai-msg';
+    if (data.error) {
+       aMsg.innerText = 'Error: ' + data.error;
+    } else {
+       aMsg.innerHTML = data.response.replace(/\n/g, '<br>');
+       // refresh slots immediately since backend scheduled them
+       fetchSlots(currentDate);
+    }
+    aiMessages.appendChild(aMsg);
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+  } catch (err) {
+    loadingMsg.innerText = 'Request failed: ' + err.message;
+  }
+}
+
+aiSendBtn.addEventListener('click', sendAiMessage);
+aiPrompt.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAiMessage();
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────────
+const gcalConnBtn = document.getElementById('gcal-conn-btn');
+
+async function checkGcalStatus() {
+  try {
+    const res = await fetch('/api/google/status');
+    const data = await res.json();
+    if(data.connected) {
+      gcalConnBtn.textContent = 'Disconnect GCal';
+      gcalConnBtn.style.background = 'rgba(255,92,122,.1)';
+      gcalConnBtn.style.color = 'var(--red)';
+      gcalConnBtn.style.borderColor = 'rgba(255,92,122,.3)';
+      gcalConnBtn.onclick = async () => {
+        await fetch('/api/google/oauth/logout', {method: 'POST'});
+        checkGcalStatus();
+        fetchSlots(currentDate);
+      };
+    } else {
+      gcalConnBtn.textContent = 'Connect GCal';
+      gcalConnBtn.style.background = 'var(--surface2)';
+      gcalConnBtn.style.color = 'var(--text)';
+      gcalConnBtn.style.borderColor = 'var(--border)';
+      gcalConnBtn.onclick = () => {
+         window.open('/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
+         const poll = setInterval(async () => {
+           const res = await fetch('/api/google/status');
+           const pollingData = await res.json();
+           if(pollingData.connected) {
+             clearInterval(poll);
+             checkGcalStatus();
+             fetchSlots(currentDate);
+           }
+         }, 1500);
+      };
+    }
+  } catch(e) { }
+}
+
 buildGrid();
 setDate(new Date());
 scrollToCurrent();
+checkGcalStatus();
 setInterval(updateNowLine, 60000);
 </script>
 </body>
