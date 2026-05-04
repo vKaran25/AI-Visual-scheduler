@@ -1,20 +1,23 @@
 import os
 import time
-import json
 import pickle
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, session, redirect
+from typing import Optional, List, Union
+from fastapi import FastAPI, HTTPException, Request, Form, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 from google_auth_oauthlib.flow import Flow
-from google.auth.transport.requests import Request
+from google.auth.transport.requests import Request as GoogleRequest
 from googleapiclient.discovery import build
-import google.generativeai as genai
+from google import genai as google_genai
+from pydantic import BaseModel
 
 load_dotenv()
 
-app = Flask(__name__, template_folder='.')
-app.secret_key = 'super_secret_key_timeblocks'
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+app = FastAPI(title="Predestination Scheduler API")
+templates = Jinja2Templates(directory=".")
+os.environ['OAUTHLIB_INSPECURE_TRANSPORT'] = '1'
 
 busy_slots = [
     {
@@ -51,7 +54,6 @@ GOOGLE_TOKEN_DIR = os.getenv("GOOGLE_TOKEN_DIR", "data/google_tokens")
 os.makedirs(GOOGLE_TOKEN_DIR, exist_ok=True)
 TOKEN_PATH = os.path.join(GOOGLE_TOKEN_DIR, "token.pickle")
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 ENABLE_TOOLS = os.getenv("ENABLE_LLM_TOOL_CALLING", "true").lower() == "true"
 
 
@@ -159,15 +161,13 @@ def compute_free_blocks(start_dt_str: str, total_hours: float, max_days: int = M
     }
 
 
-# ---- Google Calendar Functions ----
-
 def get_gcal_credentials():
     if os.path.exists(TOKEN_PATH):
         with open(TOKEN_PATH, 'rb') as token:
             creds = pickle.load(token)
             if creds and creds.valid: return creds
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                creds.refresh(GoogleRequest())
                 with open(TOKEN_PATH, 'wb') as token:
                     pickle.dump(creds, token)
                 return creds
@@ -200,7 +200,6 @@ def sync_gcal_events(force=False):
     service = get_calendar_service()
     if not service: return
 
-    # Retain non-gcal manual slots
     busy_slots = [s for s in busy_slots if not s.get('is_gcal', False)]
 
     now = datetime.utcnow().isoformat() + 'Z'
@@ -212,11 +211,11 @@ def sync_gcal_events(force=False):
     for cal_id in cals_to_sync:
         try:
             events_result = service.events().list(calendarId=cal_id, timeMin=now, timeMax=end,
-                                                  singleEvents=True, orderBy='startTime').execute()
+                                          singleEvents=True, orderBy='startTime').execute()
             for event in events_result.get('items', []):
                 sdt = event['start'].get('dateTime', event['start'].get('date'))
                 edt = event['end'].get('dateTime', event['end'].get('date'))
-                if 'T' not in sdt: continue  # Skip all-day events for now
+                if 'T' not in sdt: continue
 
                 st_dt = datetime.fromisoformat(sdt)
                 end_dt = datetime.fromisoformat(edt)
@@ -244,21 +243,68 @@ def sync_gcal_events(force=False):
 
     last_gcal_sync_time = time.time()
 
-@app.route('/api/google/status', methods=['GET'])
-def google_status():
-    return jsonify({"connected": get_gcal_credentials() is not None})
 
-@app.route('/api/google/oauth/logout', methods=['POST'])
-def google_logout():
+class AddSlotRequest(BaseModel):
+    start: str
+    end: str
+    label: Optional[str] = "Busy"
+    color: Optional[str] = "#d81b60"
+    repeatDays: Optional[List[int]] = None
+    date: Optional[str] = None
+
+
+class PutSlotRequest(BaseModel):
+    start: Optional[str] = None
+    end: Optional[str] = None
+    label: Optional[str] = None
+    color: Optional[str] = None
+    date: Optional[str] = None
+    repeatDays: Optional[List[int]] = None
+
+
+class ChatRequest(BaseModel):
+    prompt: str
+    slack: float = 0.0
+    start_after: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class AcceptRequest(BaseModel):
+    session_id: str
+
+
+class RejectRequest(BaseModel):
+    session_id: str
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    with open("index.html", "r") as f:
+        return f.read()
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.get("/api/google/status")
+async def google_status():
+    return {"connected": get_gcal_credentials() is not None}
+
+
+@app.post("/api/google/oauth/logout")
+async def google_logout():
     global busy_slots, last_gcal_sync_time
     if os.path.exists(TOKEN_PATH):
         os.remove(TOKEN_PATH)
     busy_slots = [s for s in busy_slots if not s.get('is_gcal', False)]
     last_gcal_sync_time = 0
-    return jsonify({"success": True})
+    return {"success": True}
 
-@app.route('/api/google/oauth/login')
-def google_login():
+
+@app.get("/api/google/oauth/login")
+async def google_login():
     client_config = {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -276,14 +322,11 @@ def google_login():
     )
     flow.redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
     auth_url, state = flow.authorization_url(prompt='consent', access_type='offline')
-    session['state'] = state
-    # Save the PKCE Code Verifier
-    if hasattr(flow, 'code_verifier'):
-        session['code_verifier'] = getattr(flow, 'code_verifier')
-    return redirect(auth_url)
+    return RedirectResponse(url=auth_url)
 
-@app.route('/api/google/oauth/callback')
-def google_callback():
+
+@app.get("/api/google/oauth/callback")
+async def google_callback(state: Optional[str] = None, code: Optional[str] = None, error: Optional[str] = None):
     client_config = {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -298,129 +341,46 @@ def google_callback():
     flow = Flow.from_client_config(
         client_config,
         scopes=['https://www.googleapis.com/auth/calendar'],
-        state=request.args.get('state')
+        state=state
     )
     flow.redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
 
-    code_verifier = session.get('code_verifier')
-    if code_verifier:
-        flow.fetch_token(authorization_response=request.url, code_verifier=code_verifier)
-    else:
-        flow.fetch_token(authorization_response=request.url)
-
-    with open(TOKEN_PATH, 'wb') as token:
-        pickle.dump(flow.credentials, token)
-
-    sync_gcal_events()
-    return "<script>window.opener ? window.close() : window.location.href='/';</script>"
-
-# ---- Gemini API Logic ----
-
-@app.route('/api/chat', methods=['POST'])
-def handle_chat():
-    d = request.json or {}
-    prompt = d.get('prompt')
-    slack = float(d.get('slack', 0.0))
-    start_after = d.get('start_after')
-    session_id = str(int(time.time() * 1000))
-
-    system_instruction = f"""
-    You are an AI task scheduler assistant.
-    1. Read the user's task.
-    2. Break it down into clear steps. Each step MUST have a title, duration_hours, and duration_minutes.
-    3. Keep duration_minutes a multiple of 5 (e.g., 0, 5, 10, 15, 20, 30, 45).
-    4. Return ONLY a pure JSON array of objects. NO markdown formatting, NO backticks.
-    Format exactly like this:
-    [
-        {{"title": "Step 1", "duration_hours": 1, "duration_minutes": 30}},
-        {{"title": "Step 2", "duration_hours": 0, "duration_minutes": 45}}
-    ]
-    Do not add any other text.
-    """
-
-    gemini_model = genai.GenerativeModel(
-        model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-        system_instruction=system_instruction
-    )
-
-    try:
-        response = gemini_model.generate_content(prompt)
-        text = response.text.strip()
-        if text.startswith('```json'): text = text[7:]
-        if text.startswith('```'): text = text[3:]
-        if text.endswith('```'): text = text[:-3]
-
-        steps = json.loads(text.strip())
+    if code:
+        flow.fetch_token(code=code)
+        with open(TOKEN_PATH, 'wb') as token:
+            pickle.dump(flow.credentials, token)
 
         sync_gcal_events()
 
-        service = get_calendar_service()
-        managed_cal_id = get_managed_calendar_id(service) if service else None
-
-        if start_after:
-            try:
-                search_start_dt = datetime.fromisoformat(start_after)
-            except ValueError:
-                search_start_dt = datetime.now()
-        else:
-            search_start_dt = datetime.now()
-
-        scheduled_events = []
-        global _counter
-
-        for step in steps:
-            title = step.get('title', 'AI Step')
-            hrs = float(step.get('duration_hours', 1.0))
-            mins = float(step.get('duration_minutes', 0.0))
-            raw_duration_minutes = (hrs * 60) + mins
-            slacked_duration_minutes = raw_duration_minutes * (1.0 + slack)
-            slacked_duration_minutes = round(slacked_duration_minutes / 5) * 5
-
-            free_res = compute_free_blocks(search_start_dt.isoformat()[:16], slacked_duration_minutes / 60.0)
-            allocated = free_res.get('allocated', [])
-
-            for block in allocated:
-                d_str = block['date']
-                s_str = block['start']
-                e_str = block['end']
-
-                slot = {
-                    'id': _counter,
-                    'date': d_str,
-                    'start': s_str,
-                    'end': e_str,
-                    'startMinutes': time_to_minutes(s_str),
-                    'endMinutes': time_to_minutes(e_str),
-                    'label': title,
-                    'color': '#7c6aff',
-                    'repeatDays': [],
-                    'is_gcal': False,
-                    'is_pending': True,
-                    'session_id': session_id
-                }
-                busy_slots.append(slot)
-                _counter += 1
-                scheduled_events.append(slot)
-
-            if allocated:
-                last_block = allocated[-1]
-                search_start_dt = datetime.strptime(f"{last_block['date']} {last_block['end']}", "%Y-%m-%d %H:%M")
-
-        friendly_text = f"Successfully scheduled {len(steps)} steps!\n\n"
-        for ev in scheduled_events:
-            friendly_text += f"- **{ev['label']}**: {ev['date']} {ev['start']} - {ev['end']}\n"
-
-        return jsonify({"response": friendly_text, "scheduled": scheduled_events, "session_id": session_id})
-    except Exception as e:
-        print("Gemini/Scheduling error:", e)
-        return jsonify({"error": "Failed to schedule: " + str(e)}), 500
+    return HTMLResponse(content="<script>window.opener ? window.close() : window.location.href='/';</script>")
 
 
-# ---- Standard Routes ----
+@app.post("/api/chat")
+async def handle_chat(req: ChatRequest):
+    from agent import run_planner, get_pending_blocks
+    
+    session_id = req.session_id or str(int(time.time() * 1000))
 
-@app.route('/api/chat/accept', methods=['POST'])
-def accept_chat():
-    session_id = request.json.get('session_id')
+    result = run_planner(
+        prompt=req.prompt,
+        session_id=session_id,
+        user_id="default_user"
+    )
+
+    pending = get_pending_blocks(session_id)
+
+    return {
+        "response": result.get("response", ""),
+        "scheduled": pending,
+        "session_id": session_id
+    }
+
+
+@app.post("/api/chat/accept")
+async def accept_chat(req: AcceptRequest):
+    from agent import get_pending_blocks
+    
+    session_id = req.session_id
     service = get_calendar_service()
     managed_cal_id = get_managed_calendar_id(service) if service else None
 
@@ -445,78 +405,94 @@ def accept_chat():
                     }).execute()
                 except Exception as ex:
                     print("Failed to sync new event to GCAL", ex)
-    return jsonify({"success": True, "count": accepted})
 
-@app.route('/api/chat/reject', methods=['POST'])
-def reject_chat():
+    return {
+        "success": True,
+        "count": accepted,
+        "pending_blocks": get_pending_blocks(session_id)
+    }
+
+
+@app.post("/api/chat/reject")
+async def reject_chat(req: RejectRequest):
     global busy_slots
-    session_id = request.json.get('session_id')
+    session_id = req.session_id
     busy_slots = [s for s in busy_slots if s.get('session_id') != session_id]
-    return jsonify({"success": True})
+    return {"success": True}
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/api/slots', methods=['GET'])
-def get_slots():
-    sync_gcal_events() # refresh before sending
-    date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
-    return jsonify(slots_for_date(date))
+@app.get("/api/slots")
+async def get_slots(date: Optional[str] = None):
+    sync_gcal_events()
+    if not date:
+        date = datetime.now().strftime('%Y-%m-%d')
+    return slots_for_date(date)
 
-@app.route('/api/slots', methods=['POST'])
-def add_slot():
+
+@app.post("/api/slots")
+async def add_slot(req: AddSlotRequest):
     global _counter
-    d = request.json or {}
-    start, end = d.get('start'), d.get('end')
-    if not start or not end: return jsonify({'error': 'Start and end are required'}), 400
-    if time_to_minutes(end) <= time_to_minutes(start): return jsonify({'error': 'End must be after start'}), 400
+    start, end = req.start, req.end
+    if not start or not end:
+        raise HTTPException(status_code=400, detail="Start and end are required")
+    if time_to_minutes(end) <= time_to_minutes(start):
+        raise HTTPException(status_code=400, detail="End must be after start")
 
     slot = {
         'id': _counter,
-        'date': None if d.get('repeatDays') else d.get('date'),
+        'date': None if req.repeatDays else req.date,
         'start': start,
         'end': end,
         'startMinutes': time_to_minutes(start),
         'endMinutes': time_to_minutes(end),
-        'label': d.get('label', 'Busy'),
-        'color': d.get('color', '#d81b60'),
-        'repeatDays': normalize_repeat_days(d.get('repeatDays', [])),
+        'label': req.label,
+        'color': req.color,
+        'repeatDays': normalize_repeat_days(req.repeatDays or []),
     }
     busy_slots.append(slot)
     _counter += 1
-    return jsonify(slot), 201
+    return slot
 
-@app.route('/api/slots/<int:slot_id>', methods=['PUT'])
-def update_slot(slot_id):
+
+@app.put("/api/slots/{slot_id}")
+async def update_slot(slot_id: int, req: PutSlotRequest):
+    global busy_slots
     slot = next((s for s in busy_slots if s['id'] == slot_id), None)
-    if not slot: return jsonify({'error': 'Not found'}), 404
-    d = request.json or {}
-    start, end = d.get('start', slot['start']), d.get('end', slot['end'])
-    if time_to_minutes(end) <= time_to_minutes(start): return jsonify({'error': 'Invalid times'}), 400
+    if not slot:
+        raise HTTPException(status_code=404, detail="Slot not found")
+    
+    start = req.start if req.start else slot['start']
+    end = req.end if req.end else slot['end']
+    if time_to_minutes(end) <= time_to_minutes(start):
+        raise HTTPException(status_code=400, detail="Invalid times")
 
     slot.update({
-        'date': d.get('date', slot.get('date')),
+        'date': req.date if req.date else slot.get('date'),
         'start': start, 'end': end,
         'startMinutes': time_to_minutes(start), 'endMinutes': time_to_minutes(end),
-        'label': d.get('label', slot['label']),
-        'color': d.get('color', slot['color']),
-        'repeatDays': normalize_repeat_days(d.get('repeatDays', slot.get('repeatDays')))
+        'label': req.label if req.label else slot['label'],
+        'color': req.color if req.color else slot['color'],
+        'repeatDays': normalize_repeat_days(req.repeatDays if req.repeatDays else slot.get('repeatDays'))
     })
-    return jsonify(slot)
+    return slot
 
-@app.route('/api/slots/<int:slot_id>', methods=['DELETE'])
-def delete_slot(slot_id):
+
+@app.delete("/api/slots/{slot_id}")
+async def delete_slot(slot_id: int):
     global busy_slots
     busy_slots = [s for s in busy_slots if s['id'] != slot_id]
-    return jsonify({'success': True})
+    return {"success": True}
 
-@app.route('/api/free', methods=['GET'])
-def get_free():
+
+@app.get("/api/free")
+async def get_free(start_dt: Optional[str] = None, hours: float = 1.0):
     sync_gcal_events()
-    start_dt = request.args.get('start_dt', datetime.now().isoformat(timespec='minutes'))
-    return jsonify(compute_free_blocks(start_dt, float(request.args.get('hours', 1))))
+    if not start_dt:
+        start_dt = datetime.now().isoformat(timespec='minutes')
+    return compute_free_blocks(start_dt, hours)
+
 
 if __name__ == '__main__':
+    import uvicorn
     sync_gcal_events()
-    app.run(debug=True, port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

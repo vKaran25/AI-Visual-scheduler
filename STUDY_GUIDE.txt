@@ -1,0 +1,61 @@
+FastAPI, Python & Agno AI Agent - Study Guide
+
+This file contains concepts from the AI Scheduler project. Use this prompt to study each concept.
+
+---
+
+## PROMPT TO STUDY:
+
+"Explain these Python/FastAPI concepts used in our AI Scheduler project:
+
+1. How does FastAPI's @app.post decorator work vs Flask's @app.route? Show example from our code.
+
+2. What is Pydantic's BaseModel and how is it used in ChatRequest class? Explain with code from main.py.
+
+3. How does SqliteDb from Agno work for storing agent sessions? Show the setup in agent.py.
+
+4. Explain the Team concept in Agno - what does it do and how does it differ from Agent?
+
+5. How do environment variables work with os.getenv() in Python? Show examples from main.py and agent.py.
+
+6. What is async/await in Python? Show where it's used in FastAPI routes.
+
+7. Explain CORS - why do we need it in FastAPI? Show if it's configured in our code.
+
+8. How does the @tool decorator work in Agno for function tools?
+
+9. What is a context manager in Python (with statement)? Give example.
+
+10. Explain dependency injection in FastAPI - how does it work?
+
+11. What's the difference between uvicorn and Flask development servers?
+
+12. How do we handle JSON in FastAPI vs Flask? Show request.json usage.
+
+13. What is an API route parameter vs query parameter? Show examples.
+
+14. Explain response_model in FastAPI and why use it.
+
+15. What's the difference between PUT and PATCH HTTP methods?
+
+---
+
+Study tip: Copy code from main.py and agent.py to understand each concept practically."
+
+---
+
+## STUDY COMMANDS:
+
+# Test FastAPI endpoint
+curl http://localhost:8000/health
+
+# Test POST with JSON
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "test"}'
+
+# Check available routes
+curl http://localhost:8000/openapi.json
+
+# Test slots
+curl "http://localhost:8000/api/slots?date=2026-04-26"

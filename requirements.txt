@@ -2,5 +2,12 @@ flask>=3.0.0
 google-auth
 google-auth-oauthlib
 google-api-python-client
-google-generativeai
+google-genai>=1.73.0
 python-dotenv
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+agno==2.5.17
+groq>=1.0.0
+sqlalchemy
+openai
