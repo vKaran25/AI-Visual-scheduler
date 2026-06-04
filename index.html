@@ -772,9 +772,110 @@
     resize: none;
     height: 40px;
   }
+  .auth-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    background: rgba(13,13,15,.92);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .auth-screen.hidden { display: none; }
+  .auth-card {
+    width: min(420px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 24px;
+  }
+  .auth-title {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .auth-subtitle {
+    color: var(--text2);
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .auth-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .auth-actions .btn-primary,
+  .auth-actions .btn-cancel { flex: 1; width: auto; margin-top: 0; }
+  #auth-error {
+    min-height: 18px;
+    margin-top: 10px;
+  }
+  .header-user {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .header-small-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text2);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background var(--trans), color var(--trans), border-color var(--trans);
+  }
+  .header-small-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+  .preset-summary {
+    min-height: 42px;
+    margin: 8px 0;
+    color: var(--text2);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .preset-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .preset-actions .btn-primary,
+  .preset-actions .btn-cancel { width: auto; flex: 1; }
 </style>
 </head>
 <body>
+<div id="auth-screen" class="auth-screen hidden">
+  <div class="auth-card">
+    <div class="auth-title">Predestination</div>
+    <div class="auth-subtitle">Sign in to keep your blocks, presets, memory, and agent plans in your own workspace.</div>
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">Email</label>
+        <input type="email" id="auth-email" class="form-input" autocomplete="email" placeholder="you@example.com">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label class="form-label">Password</label>
+        <input type="password" id="auth-password" class="form-input" autocomplete="current-password" placeholder="At least 8 characters">
+      </div>
+    </div>
+    <div class="auth-actions">
+      <button class="btn-primary" id="auth-login-btn">Log in</button>
+      <button class="btn-cancel" id="auth-signup-btn">Sign up</button>
+    </div>
+    <div id="auth-error" class="error-msg"></div>
+  </div>
+</div>
 <div id="app">
   <!-- Header -->
   <header id="header">
@@ -785,6 +886,8 @@
     <input type="date" id="date-picker">
     <button id="today-btn">Today</button>
     <div class="spacer"></div>
+    <span id="user-email" class="header-user"></span>
+    <button id="logout-btn" class="header-small-btn">Logout</button>
     <button id="gcal-conn-btn" style="background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--trans), color var(--trans), border-color var(--trans);">Connect GCal</button>
     <button id="ai-chat-btn" style="background: var(--accent); border: none; border-radius: var(--radius); color: #fff; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">✨ AI Planner</button>
     <button id="theme-toggle" title="Toggle theme">☀</button>
@@ -806,6 +909,7 @@
       <!-- Quick Add -->
       <div class="sb-section">
         <div class="sb-title">Quick Add</div>
+        <button class="btn-cancel" id="default-blocks-toggle-btn" style="margin-bottom: 12px;">Disable Default Blocks</button>
         <div class="form-row">
           <div class="form-col">
             <label class="form-label">Start</label>
@@ -825,6 +929,20 @@
         <button class="btn-primary" id="q-add-btn">+ Add Block</button>
       </div>
 
+      <!-- Presets -->
+      <div class="sb-section">
+        <div class="sb-title">Default Blocks</div>
+        <label class="form-label">Choose a preset</label>
+        <select id="preset-select" class="form-input">
+          <option value="">Loading presets...</option>
+        </select>
+        <div id="preset-summary" class="preset-summary"></div>
+        <div class="preset-actions">
+          <button class="btn-primary" id="preset-apply-btn">Apply</button>
+          <button class="btn-cancel" id="custom-preset-save-btn">Save Current</button>
+        </div>
+      </div>
+
       <!-- Find Free Time -->
       <div class="sb-section">
         <div class="sb-title">Find Free Time</div>
@@ -841,7 +959,7 @@
         <div class="form-row">
           <div class="form-col">
             <label class="form-label">Hours needed</label>
-            <input type="number" id="free-hours" class="form-input" min="0.25" step="0.25" value="2">
+            <input type="number" id="free-hours" class="form-input" min="0.5" step="0.25" value="2">
           </div>
         </div>
         <button class="btn-primary" id="free-search-btn">Search</button>
@@ -945,6 +1063,8 @@
 // ── State ─────────────────────────────────────────────────────────
 let currentDate = new Date();
 currentDate.setHours(0,0,0,0);
+let currentUser = null;
+let presets = [];
 let allSlots = [];          // all busy slots from server
 let freeResults = null;     // last free-time search result
 let editingSlotId = null;   // null = add mode, number = edit mode
@@ -966,6 +1086,7 @@ const datePicker    = document.getElementById('date-picker');
 const blocksCount   = document.getElementById('blocks-count');
 const blocksList    = document.getElementById('blocks-list');
 const freeResults_  = document.getElementById('free-results');
+const defaultBlocksToggleBtn = document.getElementById('default-blocks-toggle-btn');
 const nowLine       = document.getElementById('now-line');
 const dragPreview   = document.getElementById('drag-preview');
 const modalOverlay  = document.getElementById('modal-overlay');
@@ -978,12 +1099,23 @@ const mLabel        = document.getElementById('m-label');
 const colorSwatches = document.getElementById('color-swatches');
 const repeatRow     = document.getElementById('repeat-row');
 const everyDayBtn   = document.getElementById('every-day-btn');
+const authScreen    = document.getElementById('auth-screen');
+const authEmail     = document.getElementById('auth-email');
+const authPassword  = document.getElementById('auth-password');
+const authError     = document.getElementById('auth-error');
+const userEmail     = document.getElementById('user-email');
+const logoutBtn     = document.getElementById('logout-btn');
+const presetSelect  = document.getElementById('preset-select');
+const presetSummary = document.getElementById('preset-summary');
+const presetApplyBtn = document.getElementById('preset-apply-btn');
+const customPresetSaveBtn = document.getElementById('custom-preset-save-btn');
 
 // ── Helpers ───────────────────────────────────────────────────────
 function pad(n){ return String(n).padStart(2,'0'); }
 function dateStr(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function minutesToTime(m){ return `${pad(Math.floor(m/60))}:${pad(m%60)}`; }
 function timeToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+function dateTimeLocalStr(d){ return `${dateStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function topPx(m){ return m * (60/60); } // 1px per minute, 60px/hour
 function heightPx(m){ return Math.max(m, 15); }
 
@@ -1003,12 +1135,95 @@ function showToast(msg, type='info'){
   const icons = {info:'ℹ', success:'✓', error:'✕'};
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span class="ti">${icons[type]||'ℹ'}</span>${msg}`;
+  const icon = document.createElement('span');
+  icon.className = 'ti';
+  icon.textContent = icons[type] || 'ℹ';
+  t.replaceChildren(icon, document.createTextNode(String(msg)));
   document.getElementById('toast-container').appendChild(t);
   setTimeout(()=>{ t.classList.add('fade-out'); setTimeout(()=>t.remove(),220); }, 2600);
 }
 
 // ── Build timeline grid ───────────────────────────────────────────
+async function readApiError(response, fallback='Request failed'){
+  try {
+    const data = await response.json();
+    return data.error || data.detail || fallback;
+  } catch(e) {
+    return fallback;
+  }
+}
+
+function showAuth(){
+  authScreen.classList.remove('hidden');
+  userEmail.textContent = '';
+  setTimeout(()=>authEmail.focus(), 0);
+}
+
+function hideAuth(){
+  authScreen.classList.add('hidden');
+}
+
+async function checkAuth(){
+  try {
+    const r = await fetch('/api/me');
+    if(!r.ok){
+      currentUser = null;
+      showAuth();
+      return false;
+    }
+    currentUser = await r.json();
+    userEmail.textContent = currentUser.email;
+    hideAuth();
+    return true;
+  } catch(e) {
+    currentUser = null;
+    showAuth();
+    return false;
+  }
+}
+
+async function submitAuth(mode){
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  authError.textContent = '';
+  if(!email || !password){
+    authError.textContent = 'Email and password are required.';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/auth/${mode}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    if(!r.ok){
+      authError.textContent = await readApiError(r, 'Could not sign in.');
+      return;
+    }
+    currentUser = await r.json();
+    userEmail.textContent = currentUser.email;
+    hideAuth();
+    showToast(mode === 'signup' ? 'Account created' : 'Logged in', 'success');
+    await startAuthenticatedApp();
+  } catch(e) {
+    authError.textContent = 'Network error.';
+  }
+}
+
+document.getElementById('auth-login-btn').addEventListener('click', ()=>submitAuth('login'));
+document.getElementById('auth-signup-btn').addEventListener('click', ()=>submitAuth('signup'));
+authPassword.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') submitAuth('login');
+});
+logoutBtn.addEventListener('click', async ()=>{
+  await fetch('/api/auth/logout', {method:'POST'});
+  currentUser = null;
+  allSlots = [];
+  renderBlocks();
+  renderSidebar();
+  showAuth();
+});
+
 function buildGrid(){
   // Remove old hour rows & half-hour lines
   timeline.querySelectorAll('.hour-row,.half-hour-line').forEach(e=>e.remove());
@@ -1041,6 +1256,8 @@ function updateNowLine(){
 async function fetchSlots(){
   try {
     const r = await fetch(`/api/slots?date=${dateStr(currentDate)}`);
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Failed to load slots'), 'error'); return; }
     const data = await r.json();
     allSlots = data;
     renderBlocks();
@@ -1048,6 +1265,86 @@ async function fetchSlots(){
     if(freeResults) reHighlightFree(freeResults);
   } catch(e){ showToast('Failed to load slots','error'); }
 }
+
+async function syncDefaultBlocksButton(){
+  try {
+    const r = await fetch('/api/settings/default-blocks');
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok) return;
+    const data = await r.json();
+    defaultBlocksToggleBtn.dataset.enabled = String(data.enabled);
+    defaultBlocksToggleBtn.textContent = data.enabled ? 'Disable Default Blocks' : 'Enable Default Blocks';
+  } catch(e){ }
+}
+
+async function loadPresets(){
+  try {
+    const r = await fetch('/api/presets');
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Could not load presets'), 'error'); return; }
+    presets = await r.json();
+    presetSelect.innerHTML = '';
+    presets.forEach(preset=>{
+      const opt = document.createElement('option');
+      opt.value = preset.id;
+      opt.textContent = preset.custom ? `Custom: ${preset.name}` : preset.name;
+      presetSelect.appendChild(opt);
+    });
+    updatePresetSummary();
+  } catch(e) {
+    presetSelect.innerHTML = '<option value="">Preset load failed</option>';
+  }
+}
+
+function updatePresetSummary(){
+  const preset = presets.find(item=>item.id === presetSelect.value);
+  if(!preset){
+    presetSummary.textContent = 'Choose a built-in or saved preset.';
+    return;
+  }
+  const blockCount = preset.blocks ? preset.blocks.length : 0;
+  presetSummary.textContent = `${preset.description || 'Custom saved preset.'} ${blockCount} block${blockCount === 1 ? '' : 's'}.`;
+}
+
+presetSelect.addEventListener('change', updatePresetSummary);
+presetApplyBtn.addEventListener('click', async ()=>{
+  const presetId = presetSelect.value;
+  if(!presetId){ showToast('Choose a preset first', 'error'); return; }
+  const preset = presets.find(item=>item.id === presetId);
+  const clearExisting = window.confirm(`Apply "${preset ? preset.name : 'preset'}"? Choose OK to replace existing non-Google blocks, or Cancel to add only if there is no overlap.`);
+  try {
+    const r = await fetch(`/api/presets/${encodeURIComponent(presetId)}/apply`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({clear_existing: clearExisting})
+    });
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Could not apply preset'), 'error'); return; }
+    showToast('Preset applied', 'success');
+    await syncDefaultBlocksButton();
+    await fetchSlots();
+  } catch(e) {
+    showToast('Network error', 'error');
+  }
+});
+
+customPresetSaveBtn.addEventListener('click', async ()=>{
+  const name = window.prompt('Name this custom preset');
+  if(!name || !name.trim()) return;
+  try {
+    const r = await fetch('/api/custom-presets', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name: name.trim(), description: 'Saved from current schedule'})
+    });
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Could not save preset'), 'error'); return; }
+    showToast('Custom preset saved', 'success');
+    await loadPresets();
+  } catch(e) {
+    showToast('Network error', 'error');
+  }
+});
 
 function renderBlocks(){
   timeline.querySelectorAll('.busy-block,.free-highlight').forEach(e=>e.remove());
@@ -1162,6 +1459,7 @@ document.getElementById('today-btn').addEventListener('click',()=>setDate(new Da
 datePicker.addEventListener('change',e=>{ if(e.target.value) setDate(new Date(e.target.value+'T00:00:00')); });
 document.addEventListener('keydown',e=>{
   if(modalOverlay.classList.contains('open')) return;
+  if(e.target.closest('input, textarea, select, button')) return;
   if(e.key==='ArrowLeft'){ document.getElementById('prev-day').click(); }
   if(e.key==='ArrowRight'){ document.getElementById('next-day').click(); }
   if(e.key==='t'||e.key==='T'){ document.getElementById('today-btn').click(); }
@@ -1277,7 +1575,8 @@ modalSave.addEventListener('click', async ()=>{
     } else {
       r = await fetch('/api/slots',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     }
-    if(!r.ok){ const d=await r.json(); showToast(d.error||'Error','error'); return; }
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
     closeModal();
     showToast(editingSlotId!=null ? 'Block updated' : 'Block added','success');
     await fetchSlots();
@@ -1294,12 +1593,31 @@ modalDelete.addEventListener('click', async ()=>{
 async function deleteSlot(id){
   try {
     const r = await fetch(`/api/slots/${id}`,{method:'DELETE'});
+    if(r.status === 401){ showAuth(); return; }
     if(r.ok){ showToast('Block deleted','info'); await fetchSlots(); }
     else { showToast('Delete failed','error'); }
   } catch(e){ showToast('Network error','error'); }
 }
 
 // ── Quick add ─────────────────────────────────────────────────────
+defaultBlocksToggleBtn.addEventListener('click', async ()=>{
+  try {
+    const currentlyEnabled = defaultBlocksToggleBtn.dataset.enabled !== 'false';
+    const r = await fetch('/api/settings/default-blocks', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({enabled: !currentlyEnabled})
+    });
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Could not update defaults'),'error'); return; }
+    const data = await r.json();
+    defaultBlocksToggleBtn.dataset.enabled = String(data.enabled);
+    defaultBlocksToggleBtn.textContent = data.enabled ? 'Disable Default Blocks' : 'Enable Default Blocks';
+    showToast(data.enabled ? 'Default blocks enabled' : 'Default blocks removed','info');
+    await fetchSlots();
+  } catch(e){ showToast('Network error','error'); }
+});
+
 document.getElementById('q-add-btn').addEventListener('click', async ()=>{
   const start = document.getElementById('q-start').value;
   const end   = document.getElementById('q-end').value;
@@ -1312,7 +1630,8 @@ document.getElementById('q-add-btn').addEventListener('click', async ()=>{
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ start, end, label, color:COLORS[0], repeatDays:[], date:dateStr(currentDate) })
     });
-    if(!r.ok){ const d=await r.json(); showToast(d.error||'Error','error'); return; }
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
     showToast('Block added','success');
     document.getElementById('q-label').value='';
     await fetchSlots();
@@ -1326,10 +1645,10 @@ document.getElementById('free-search-btn').addEventListener('click', async ()=>{
   const hours   = parseFloat(document.getElementById('free-hours').value);
 
   if(!dateVal||!timeVal){ showToast('Fill in date and time','error'); return; }
-  if(isNaN(hours)||hours<=0){ showToast('Enter valid hours','error'); return; }
+  if(isNaN(hours)||hours<0.5){ showToast('Enter at least 0.5 hours','error'); return; }
 
   const startDt = `${dateVal}T${timeVal}`;
-  const nowIso  = new Date().toISOString().slice(0,16);
+  const nowIso  = dateTimeLocalStr(new Date());
   if(startDt < nowIso){ showToast('Start time is in the past','error'); return; }
 
   const btn = document.getElementById('free-search-btn');
@@ -1337,6 +1656,8 @@ document.getElementById('free-search-btn').addEventListener('click', async ()=>{
 
   try {
     const r = await fetch(`/api/free?start_dt=${encodeURIComponent(startDt)}&hours=${hours}`);
+    if(r.status === 401){ showAuth(); return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Search failed'), 'error'); return; }
     const data = await r.json();
     freeResults = data;
     renderFreeResults(data);
@@ -1478,6 +1799,7 @@ async function sendAiMessage() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    if(res.status === 401){ loadingMsg.remove(); showAuth(); return; }
     const data = await res.json();
     loadingMsg.remove();
     
@@ -1486,7 +1808,7 @@ async function sendAiMessage() {
     if (data.error) {
        aMsg.innerText = 'Error: ' + data.error;
     } else {
-       aMsg.innerHTML = data.response.replace(/\n/g, '<br>');
+       aMsg.innerHTML = escHtml(data.response || '').replace(/\n/g, '<br>');
        
        if (data.scheduled && data.scheduled.length > 0) {
           const actions = document.createElement('div');
@@ -1521,8 +1843,9 @@ window.acceptAiEvents = async function(sessionId, containerId) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
         });
+        if(r.status === 401){ showAuth(); return; }
         if (r.ok) {
-            if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">✓ Accepted and sent to Calendar</span>';
+            if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">Accepted and saved</span>';
             fetchSlots();
         } else {
             if(container) container.innerHTML = '<span class="error-msg">Failed to accept.</span>';
@@ -1542,8 +1865,9 @@ window.rejectAiEvents = async function(sessionId, containerId) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
         });
+        if(r.status === 401){ showAuth(); return; }
         if (r.ok) {
-            if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">✕ Rejected and removed</span>';
+            if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">Rejected and removed</span>';
             fetchSlots();
         } else {
             if(container) container.innerHTML = '<span class="error-msg">Failed to reject.</span>';
@@ -1567,6 +1891,8 @@ const gcalConnBtn = document.getElementById('gcal-conn-btn');
 async function checkGcalStatus() {
   try {
     const res = await fetch('/api/google/status');
+    if(res.status === 401){ showAuth(); return; }
+    if(!res.ok) return;
     const data = await res.json();
     if(data.connected) {
       gcalConnBtn.textContent = 'Disconnect GCal';
@@ -1574,7 +1900,8 @@ async function checkGcalStatus() {
       gcalConnBtn.style.color = 'var(--red)';
       gcalConnBtn.style.borderColor = 'rgba(255,92,122,.3)';
       gcalConnBtn.onclick = async () => {
-        await fetch('/api/google/oauth/logout', {method: 'POST'});
+        const logoutRes = await fetch('/api/google/oauth/logout', {method: 'POST'});
+        if(logoutRes.status === 401){ showAuth(); return; }
         checkGcalStatus();
         fetchSlots(currentDate);
       };
@@ -1587,6 +1914,8 @@ async function checkGcalStatus() {
          window.open('/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
          const poll = setInterval(async () => {
            const res = await fetch('/api/google/status');
+           if(res.status === 401){ clearInterval(poll); showAuth(); return; }
+           if(!res.ok) return;
            const pollingData = await res.json();
            if(pollingData.connected) {
              clearInterval(poll);
@@ -1600,9 +1929,22 @@ async function checkGcalStatus() {
 }
 
 buildGrid();
-setDate(new Date());
-scrollToCurrent();
-checkGcalStatus();
+async function startAuthenticatedApp(){
+  await loadPresets();
+  await syncDefaultBlocksButton();
+  setDate(currentDate);
+  scrollToCurrent();
+  await checkGcalStatus();
+}
+
+async function initApp(){
+  const authenticated = await checkAuth();
+  if(authenticated){
+    await startAuthenticatedApp();
+  }
+}
+
+initApp();
 setInterval(updateNowLine, 60000);
 </script>
 </body>
