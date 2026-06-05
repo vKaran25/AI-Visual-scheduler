@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api", tags=["agents"])
 @router.post("/agent/chat")
 def agent_chat(data: AgentChatRequest, session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)):
     try:
-        return roadmap_agent.run_roadmap_agent(session, user, data.prompt, data.start_after, data.slack)
+        return roadmap_agent.run_roadmap_agent(session, user, data.prompt, data.start_after, data.slack, data.session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

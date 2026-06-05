@@ -142,7 +142,14 @@ def test_agent_creates_pending_plan_and_confirm(monkeypatch):
 
     from app.agents import roadmap_agent
 
+    call_count = 0
     def fake_completion(messages, provider="nvidia_nim", response_format=None, temperature=0.2):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return "[]"
+        if call_count == 2:
+            return "plan"
         return """
         {
           "goal": "Study GitHub and interview basics",
@@ -219,7 +226,14 @@ def test_agent_default_start_snaps_to_30_minutes(monkeypatch):
 
     from app.agents import roadmap_agent
 
+    call_count = 0
     def fake_completion(messages, provider="nvidia_nim", response_format=None, temperature=0.2):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return "[]"
+        if call_count == 2:
+            return "plan"
         return """
         {
           "goal": "Quick task",

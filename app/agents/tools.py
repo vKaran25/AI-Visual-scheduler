@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from sqlmodel import Session
 
 from app.db.models import User
-from app.services import preset_service, scheduler_service
+from app.services import calendar_service, preset_service, scheduler_service
 
 
 def _date_range(start_date: str, end_date: str | None = None) -> list[str]:
@@ -52,7 +52,14 @@ def detect_conflicts(session: Session, user: User, start_date: str, end_date: st
 
 
 def commit_pending_plan(session: Session, user: User, session_id: str) -> list[dict]:
-    blocks = scheduler_service.accept_pending_slots(session, user, session_id)
+    gcal_connected = calendar_service.get_gcal_credentials(user) is not None
+    blocks = scheduler_service.accept_pending_slots(session, user, session_id, mark_as_gcal=gcal_connected)
+    if gcal_connected:
+        for block in blocks:
+            try:
+                calendar_service.insert_calendar_event(user, block)
+            except Exception as exc:
+                print(f"GCal insert failed for block {block.id}: {exc}")
     return [scheduler_service.block_to_dict(block) for block in blocks]
 
 

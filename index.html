@@ -793,6 +793,202 @@
     max-width: 85%;
     border: 1px solid var(--border);
   }
+
+  /* ── Gantt Chart ───────────────────────────────────────────────── */
+  .gantt-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    margin-top: 8px;
+    overflow-x: auto;
+  }
+  .gantt-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .gantt-grid {
+    display: grid;
+    gap: 0;
+    min-width: 100%;
+  }
+  .gantt-day-label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text2);
+    padding: 4px 6px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .gantt-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 32px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .gantt-row:last-child { border-bottom: none; }
+  .gantt-row-label {
+    width: 80px;
+    flex-shrink: 0;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text3);
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid var(--border);
+  }
+  .gantt-row-bars {
+    flex: 1;
+    position: relative;
+    min-height: 30px;
+  }
+  .gantt-bar {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    border-radius: var(--radius);
+    padding: 2px 6px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #fff;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    cursor: default;
+    z-index: 1;
+  }
+  .gantt-bar:hover {
+    filter: brightness(1.15);
+    z-index: 2;
+  }
+  .gantt-hour-markers {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    pointer-events: none;
+  }
+  .gantt-hour-line {
+    flex: 1;
+    border-right: 1px dashed var(--border);
+    opacity: 0.4;
+  }
+  .gantt-hour-header {
+    flex: 1;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 8px;
+    color: var(--text3);
+    text-align: center;
+    padding: 2px 0;
+    border-right: 1px dashed var(--border);
+  }
+  .gantt-hour-header:last-child { border-right: none; }
+  .gantt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .gantt-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    color: var(--text2);
+  }
+  .gantt-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Plan Review Card ──────────────────────────────────────────── */
+  .plan-review {
+    margin-top: 8px;
+  }
+  .plan-goal {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+  }
+  .plan-summary {
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+  .plan-day {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+    overflow: hidden;
+  }
+  .plan-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .plan-day-duration {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .plan-task {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .plan-task:last-child { border-bottom: none; }
+  .plan-task-time {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    min-width: 80px;
+  }
+  .plan-task-label {
+    color: var(--text);
+    flex: 1;
+  }
+  .plan-task-dur {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  .plan-footer {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
   #ai-chat-input-area {
     padding: 12px 14px;
     border-top: 1px solid var(--border);
@@ -1815,6 +2011,202 @@ function scrollToCurrent(){
   tWrap.scrollTop = Math.max(0, m - 120);
 }
 
+// ── Plan Review Renderer ───────────────────────────────────────
+function renderPlanReview(review) {
+  if (!review || !review.days) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'plan-review';
+
+  const goal = document.createElement('div');
+  goal.className = 'plan-goal';
+  goal.textContent = review.goal;
+  wrap.appendChild(goal);
+
+  const summary = document.createElement('div');
+  summary.className = 'plan-summary';
+  summary.textContent = `${review.total_hours}h across ${review.num_days} days \u00b7 ${review.num_blocks} blocks`;
+  wrap.appendChild(summary);
+
+  review.days.forEach(day => {
+    const dayEl = document.createElement('div');
+    dayEl.className = 'plan-day';
+
+    const d = new Date(day.date + 'T00:00:00');
+    const dayName = isToday(d) ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const h = Math.floor(day.day_minutes / 60);
+    const m = day.day_minutes % 60;
+    const durStr = m ? `${h}h ${m}m` : `${h}h`;
+
+    const header = document.createElement('div');
+    header.className = 'plan-day-header';
+    header.innerHTML = `<span>${dayName}</span><span class="plan-day-duration">${durStr}</span>`;
+    dayEl.appendChild(header);
+
+    day.blocks.forEach(block => {
+      const taskEl = document.createElement('div');
+      taskEl.className = 'plan-task';
+      const blockMin = (parseInt(block.end.split(':')[0]) * 60 + parseInt(block.end.split(':')[1])) -
+                        (parseInt(block.start.split(':')[0]) * 60 + parseInt(block.start.split(':')[1]));
+      const bm = Math.floor(blockMin / 60);
+      const bmm = blockMin % 60;
+      const blockDur = bm > 0 ? (bmm > 0 ? `${bm}h ${bmm}m` : `${bm}h`) : `${bmm}m`;
+      taskEl.innerHTML = `
+        <span class="plan-task-time">${block.start}\u2013${block.end}</span>
+        <span class="plan-task-label">${escHtml(block.label)}</span>
+        <span class="plan-task-dur">${blockDur}</span>
+      `;
+      dayEl.appendChild(taskEl);
+    });
+
+    wrap.appendChild(dayEl);
+  });
+
+  if (review.conflicts && review.conflicts.length) {
+    const footer = document.createElement('div');
+    footer.className = 'plan-footer';
+    footer.style.color = 'var(--red)';
+    footer.textContent = `Warning: ${review.conflicts.length} conflict(s) need review.`;
+    wrap.appendChild(footer);
+  }
+
+  return wrap;
+}
+
+// ── Gantt Chart ───────────────────────────────────────────────
+const GANTT_COLORS = ['#6c5ce7','#e17055','#00b894','#0984e3','#d6309e','#fdcb6e','#00cec9','#e84393'];
+
+function renderGantt(scheduled) {
+  if (!scheduled || !scheduled.length) return null;
+
+  const byDate = {};
+  scheduled.forEach(b => {
+    if (!byDate[b.date]) byDate[b.date] = [];
+    byDate[b.date].push(b);
+  });
+
+  const sortedDates = Object.keys(byDate).sort();
+  let earliestH = 24, latestH = 0;
+  sortedDates.forEach(d => {
+    byDate[d].forEach(b => {
+      const sh = parseInt(b.start.split(':')[0]);
+      const eh = parseInt(b.end.split(':')[0]);
+      if (sh < earliestH) earliestH = sh;
+      if (eh > latestH) latestH = eh;
+    });
+  });
+  earliestH = Math.max(0, earliestH - 1);
+  latestH = Math.min(24, latestH + 1);
+  if (latestH <= earliestH) latestH = earliestH + 4;
+  const hours = [];
+  for (let h = earliestH; h < latestH; h++) hours.push(h);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'gantt-wrap';
+
+  const title = document.createElement('div');
+  title.className = 'gantt-title';
+  title.textContent = 'Planned Schedule';
+  wrap.appendChild(title);
+
+  const headerRow = document.createElement('div');
+  headerRow.className = 'gantt-row';
+  const headerLabel = document.createElement('div');
+  headerLabel.className = 'gantt-row-label';
+  headerLabel.textContent = '';
+  headerRow.appendChild(headerLabel);
+  const headerBars = document.createElement('div');
+  headerBars.className = 'gantt-row-bars';
+  headerBars.style.display = 'flex';
+  hours.forEach(() => {
+    const marker = document.createElement('div');
+    marker.className = 'gantt-hour-header';
+    marker.textContent = '';
+    headerBars.appendChild(marker);
+  });
+  headerRow.appendChild(headerBars);
+  wrap.appendChild(headerRow);
+
+  const totalH = hours.length;
+  let colorIdx = 0;
+  const legendItems = [];
+
+  sortedDates.forEach(date => {
+    const d = new Date(date + 'T00:00:00');
+    const dayLabel = isToday(d) ? 'Today' : formatDate(d);
+
+    const dayLabelEl = document.createElement('div');
+    dayLabelEl.className = 'gantt-day-label';
+    dayLabelEl.textContent = dayLabel;
+    wrap.appendChild(dayLabelEl);
+
+    const row = document.createElement('div');
+    row.className = 'gantt-row';
+
+    const rowLabel = document.createElement('div');
+    rowLabel.className = 'gantt-row-label';
+    rowLabel.textContent = date.slice(5);
+    row.appendChild(rowLabel);
+
+    const rowBars = document.createElement('div');
+    rowBars.className = 'gantt-row-bars';
+
+    const gridLines = document.createElement('div');
+    gridLines.className = 'gantt-hour-markers';
+    hours.forEach(() => {
+      const line = document.createElement('div');
+      line.className = 'gantt-hour-line';
+      gridLines.appendChild(line);
+    });
+    rowBars.appendChild(gridLines);
+
+    byDate[date].forEach(b => {
+      const [sh, sm] = b.start.split(':').map(Number);
+      const [eh, em] = b.end.split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+      const dayStartMin = earliestH * 60;
+
+      const leftPct = ((startMin - dayStartMin) / (totalH * 60)) * 100;
+      const widthPct = ((endMin - startMin) / (totalH * 60)) * 100;
+
+      const color = GANTT_COLORS[colorIdx % GANTT_COLORS.length];
+      colorIdx++;
+
+      const bar = document.createElement('div');
+      bar.className = 'gantt-bar';
+      bar.style.left = leftPct + '%';
+      bar.style.width = Math.max(widthPct, 2) + '%';
+      bar.style.background = color;
+      bar.textContent = b.label || 'Task';
+      bar.title = `${b.label}\n${b.start} – ${b.end}`;
+      rowBars.appendChild(bar);
+
+      legendItems.push({ label: b.label, color });
+    });
+
+    row.appendChild(rowBars);
+    wrap.appendChild(row);
+  });
+
+  if (legendItems.length) {
+    const legend = document.createElement('div');
+    legend.className = 'gantt-legend';
+    legendItems.forEach(item => {
+      const li = document.createElement('div');
+      li.className = 'gantt-legend-item';
+      const dot = document.createElement('div');
+      dot.className = 'gantt-legend-dot';
+      dot.style.background = item.color;
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(item.label));
+      legend.appendChild(li);
+    });
+    wrap.appendChild(legend);
+  }
+
+  return wrap;
+}
+
 // ── AI Chat Logic ────────────────────────────────────────────────
 const aiChatBtn = document.getElementById('ai-chat-btn');
 const aiChatPanel = document.getElementById('ai-chat-panel');
@@ -1824,6 +2216,7 @@ const aiPrompt = document.getElementById('ai-prompt');
 const aiMessages = document.getElementById('ai-chat-messages');
 const slackSlider = document.getElementById('slack-slider');
 const slackVal = document.getElementById('slack-val');
+let currentSessionId = null;
 
 slackSlider.addEventListener('input', e => {
   slackVal.textContent = parseFloat(e.target.value).toFixed(1);
@@ -1879,7 +2272,8 @@ async function sendAiMessage() {
     const payload = { 
       prompt: text, 
       slack: parseFloat(slackSlider.value),
-      start_after: startAfter || null
+      start_after: startAfter || null,
+      session_id: currentSessionId || null
     };
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -1890,14 +2284,26 @@ async function sendAiMessage() {
     const data = await res.json();
     loadingMsg.remove();
     
+    if (data.session_id) {
+      currentSessionId = data.session_id;
+    }
+
     const aMsg = document.createElement('div');
     aMsg.className = 'ai-msg';
     if (data.error) {
        aMsg.innerText = 'Error: ' + data.error;
     } else {
-       aMsg.innerHTML = escHtml(data.response || '').replace(/\n/g, '<br>');
+       if (data.intent === 'plan' && data.review) {
+          const reviewCard = renderPlanReview(data.review);
+          if (reviewCard) aMsg.appendChild(reviewCard);
+       } else {
+          aMsg.innerHTML = escHtml(data.response || '').replace(/\n/g, '<br>');
+       }
        
-       if (data.scheduled && data.scheduled.length > 0) {
+       if (data.intent === 'plan' && data.scheduled && data.scheduled.length > 0) {
+          const gantt = renderGantt(data.scheduled);
+          if (gantt) aMsg.appendChild(gantt);
+
           const actions = document.createElement('div');
           actions.style.marginTop = '10px';
           const sessionIdStr = JSON.stringify(data.session_id).replace(/"/g, '&quot;');
@@ -1911,7 +2317,9 @@ async function sendAiMessage() {
           aMsg.appendChild(actions);
        }
        
-       fetchSlots();
+       if (data.intent === 'plan') {
+          fetchSlots();
+       }
     }
     aiMessages.appendChild(aMsg);
     aiMessages.scrollTop = aiMessages.scrollHeight;
