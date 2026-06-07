@@ -232,7 +232,7 @@
     left: 60px;
     right: 8px;
     border-radius: var(--radius);
-    padding: 4px 8px;
+    padding: 5px 10px;
     overflow: hidden;
     cursor: pointer;
     transition: filter var(--trans), transform var(--trans), box-shadow var(--trans);
@@ -250,15 +250,17 @@
   .busy-block .blk-label {
     font-size: 12px;
     font-weight: 600;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
     overflow: hidden;
-    text-overflow: ellipsis;
     color: rgba(255,255,255,.95);
+    line-height: 1.2;
   }
   .busy-block .blk-time {
     font-family: 'Unbounded', sans-serif;
     font-size: 10px;
     color: rgba(255,255,255,.65);
+    margin-top: 1px;
   }
   .busy-block .blk-repeat {
     font-size: 10px;
@@ -1148,40 +1150,86 @@
 
     <!-- Sidebar -->
     <aside id="sidebar">
-      <!-- Quick Add -->
+      <!-- Add Busy Block -->
       <div class="sb-section">
-        <div class="sb-title">Quick Add</div>
-        <button class="btn-cancel" id="default-blocks-toggle-btn" style="margin-bottom: 12px;">Disable Default Blocks</button>
+        <div class="sb-title">Add Busy Block</div>
         <div class="form-row">
           <div class="form-col">
             <label class="form-label">Start</label>
-            <input type="time" id="q-start" class="form-input" value="09:00">
+            <input type="time" id="b-start" class="form-input" value="09:00">
           </div>
           <div class="form-col">
             <label class="form-label">End</label>
-            <input type="time" id="q-end" class="form-input" value="10:00">
+            <input type="time" id="b-end" class="form-input" value="10:00">
           </div>
         </div>
         <div class="form-row">
           <div class="form-col">
             <label class="form-label">Label</label>
-            <input type="text" id="q-label" class="form-input" placeholder="Busy" maxlength="40">
+            <input type="text" id="b-label" class="form-input" placeholder="Busy" maxlength="40">
+          </div>
+          <div class="form-col">
+            <label class="form-label">Color</label>
+            <input type="color" id="b-color" class="form-input" value="#d81b60" style="height:38px;padding:4px;">
           </div>
         </div>
-        <button class="btn-primary" id="q-add-btn">+ Add Block</button>
+        <div class="form-row">
+          <div class="form-col" style="flex:1">
+            <label class="form-label">Repeat</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="radio" name="b-repeat" value="none" checked> One-time
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="radio" name="b-repeat" value="custom"> Repeat on:
+              </label>
+            </div>
+          </div>
+        </div>
+        <div id="b-repeat-days" class="form-row" style="display:none;margin-top:4px;">
+          <div class="form-col" style="flex:1">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="0"> Mon
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="1"> Tue
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="2"> Wed
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="3"> Thu
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="4"> Fri
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="5"> Sat
+              </label>
+              <label style="display:flex;align-items:center;gap:2px;cursor:pointer;font-size:12px;">
+                <input type="checkbox" name="b-day" value="6"> Sun
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-primary" id="b-add-btn">Add Block</button>
+          <button class="btn-cancel" id="b-save-template-btn">Save as Template</button>
+        </div>
       </div>
 
-      <!-- Presets -->
+      <!-- Templates -->
       <div class="sb-section">
-        <div class="sb-title">Default Blocks</div>
-        <label class="form-label">Choose a preset</label>
+        <div class="sb-title">Templates</div>
+        <label class="form-label">Choose a template</label>
         <select id="preset-select" class="form-input">
-          <option value="">Loading presets...</option>
+          <option value="">Loading templates...</option>
         </select>
         <div id="preset-summary" class="preset-summary"></div>
         <div class="preset-actions">
           <button class="btn-primary" id="preset-apply-btn">Apply</button>
-          <button class="btn-cancel" id="custom-preset-save-btn">Save Current</button>
+          <button class="btn-cancel" id="preset-remove-btn">Remove</button>
         </div>
       </div>
 
@@ -1327,7 +1375,6 @@ const datePicker    = document.getElementById('date-picker');
 const blocksCount   = document.getElementById('blocks-count');
 const blocksList    = document.getElementById('blocks-list');
 const freeResults_  = document.getElementById('free-results');
-const defaultBlocksToggleBtn = document.getElementById('default-blocks-toggle-btn');
 const nowLine       = document.getElementById('now-line');
 const dragPreview   = document.getElementById('drag-preview');
 const modalOverlay  = document.getElementById('modal-overlay');
@@ -1349,7 +1396,7 @@ const logoutBtn     = document.getElementById('logout-btn');
 const presetSelect  = document.getElementById('preset-select');
 const presetSummary = document.getElementById('preset-summary');
 const presetApplyBtn = document.getElementById('preset-apply-btn');
-const customPresetSaveBtn = document.getElementById('custom-preset-save-btn');
+const presetRemoveBtn = document.getElementById('preset-remove-btn');
 
 // ── Helpers ───────────────────────────────────────────────────────
 function pad(n){ return String(n).padStart(2,'0'); }
@@ -1358,7 +1405,7 @@ function minutesToTime(m){ return `${pad(Math.floor(m/60))}:${pad(m%60)}`; }
 function timeToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
 function dateTimeLocalStr(d){ return `${dateStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function topPx(m){ return m * (60/60); } // 1px per minute, 60px/hour
-function heightPx(m){ return Math.max(m, 15); }
+function heightPx(m){ return Math.max(m, 40); }
 
 function formatDate(d){
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1507,17 +1554,6 @@ async function fetchSlots(){
   } catch(e){ showToast('Failed to load slots','error'); }
 }
 
-async function syncDefaultBlocksButton(){
-  try {
-    const r = await fetch('/api/settings/default-blocks');
-    if(r.status === 401){ showAuth(); return; }
-    if(!r.ok) return;
-    const data = await r.json();
-    defaultBlocksToggleBtn.dataset.enabled = String(data.enabled);
-    defaultBlocksToggleBtn.textContent = data.enabled ? 'Disable Default Blocks' : 'Enable Default Blocks';
-  } catch(e){ }
-}
-
 async function loadPresets(){
   try {
     const r = await fetch('/api/presets');
@@ -1562,26 +1598,7 @@ presetApplyBtn.addEventListener('click', async ()=>{
     if(r.status === 401){ showAuth(); return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not apply preset'), 'error'); return; }
     showToast('Preset applied', 'success');
-    await syncDefaultBlocksButton();
     await fetchSlots();
-  } catch(e) {
-    showToast('Network error', 'error');
-  }
-});
-
-customPresetSaveBtn.addEventListener('click', async ()=>{
-  const name = window.prompt('Name this custom preset');
-  if(!name || !name.trim()) return;
-  try {
-    const r = await fetch('/api/custom-presets', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name: name.trim(), description: 'Saved from current schedule'})
-    });
-    if(r.status === 401){ showAuth(); return; }
-    if(!r.ok){ showToast(await readApiError(r, 'Could not save preset'), 'error'); return; }
-    showToast('Custom preset saved', 'success');
-    await loadPresets();
   } catch(e) {
     showToast('Network error', 'error');
   }
@@ -1596,7 +1613,8 @@ function renderBlocks(){
     let placed = false;
     for(let c=0;c<columns.length;c++){
       const col = columns[c];
-      if(col[col.length-1].endMinutes <= slot.startMinutes){
+      const overlaps = col.some(b => b.startMinutes < slot.endMinutes && b.endMinutes > slot.startMinutes);
+      if(!overlaps){
         col.push(slot); placed=true; break;
       }
     }
@@ -1855,43 +1873,96 @@ async function deleteSlot(id){
   } catch(e){ showToast('Network error','error'); }
 }
 
-// ── Quick add ─────────────────────────────────────────────────────
-defaultBlocksToggleBtn.addEventListener('click', async ()=>{
-  try {
-    const currentlyEnabled = defaultBlocksToggleBtn.dataset.enabled !== 'false';
-    const r = await fetch('/api/settings/default-blocks', {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({enabled: !currentlyEnabled})
-    });
-    if(r.status === 401){ showAuth(); return; }
-    if(!r.ok){ showToast(await readApiError(r, 'Could not update defaults'),'error'); return; }
-    const data = await r.json();
-    defaultBlocksToggleBtn.dataset.enabled = String(data.enabled);
-    defaultBlocksToggleBtn.textContent = data.enabled ? 'Disable Default Blocks' : 'Enable Default Blocks';
-    showToast(data.enabled ? 'Default blocks enabled' : 'Default blocks removed','info');
-    await fetchSlots();
-  } catch(e){ showToast('Network error','error'); }
+// ── Add Busy Block ─────────────────────────────────────────────────
+// Toggle repeat days visibility
+document.querySelectorAll('input[name="b-repeat"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const repeatDaysDiv = document.getElementById('b-repeat-days');
+    repeatDaysDiv.style.display = radio.value === 'custom' ? 'flex' : 'none';
+  });
 });
 
-document.getElementById('q-add-btn').addEventListener('click', async ()=>{
-  const start = document.getElementById('q-start').value;
-  const end   = document.getElementById('q-end').value;
-  const label = document.getElementById('q-label').value.trim() || 'Busy';
-  if(!start||!end){ showToast('Fill start and end','error'); return; }
-  if(timeToMinutes(end)<=timeToMinutes(start)){ showToast('End must be after start','error'); return; }
+document.getElementById('b-add-btn').addEventListener('click', async () => {
+  const start = document.getElementById('b-start').value;
+  const end   = document.getElementById('b-end').value;
+  const label = document.getElementById('b-label').value.trim() || 'Busy';
+  const color = document.getElementById('b-color').value;
+  
+  if (!start || !end) { showToast('Fill start and end', 'error'); return; }
+  if (timeToMinutes(end) <= timeToMinutes(start)) { showToast('End must be after start', 'error'); return; }
+  
+  const repeatType = document.querySelector('input[name="b-repeat"]:checked').value;
+  let repeatDays = [];
+  if (repeatType === 'custom') {
+    repeatDays = Array.from(document.querySelectorAll('input[name="b-day"]:checked'))
+      .map(cb => parseInt(cb.value));
+    if (repeatDays.length === 0) { showToast('Select at least one day', 'error'); return; }
+  }
+  
   try {
-    const r = await fetch('/api/slots',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ start, end, label, color:COLORS[0], repeatDays:[], date:dateStr(currentDate) })
+    const r = await fetch('/api/slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start, end, label, color, repeatDays, date: repeatDays.length ? null : dateStr(currentDate) })
     });
-    if(r.status === 401){ showAuth(); return; }
-    if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
-    showToast('Block added','success');
-    document.getElementById('q-label').value='';
+    if (r.status === 401) { showAuth(); return; }
+    if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
+    showToast('Block added', 'success');
+    document.getElementById('b-label').value = '';
     await fetchSlots();
-  } catch(e){ showToast('Network error','error'); }
+  } catch (e) { showToast('Network error', 'error'); }
+});
+
+document.getElementById('b-save-template-btn').addEventListener('click', async () => {
+  const start = document.getElementById('b-start').value;
+  const end   = document.getElementById('b-end').value;
+  const label = document.getElementById('b-label').value.trim() || 'Busy';
+  const color = document.getElementById('b-color').value;
+  
+  if (!start || !end) { showToast('Fill start and end', 'error'); return; }
+  if (timeToMinutes(end) <= timeToMinutes(start)) { showToast('End must be after start', 'error'); return; }
+  
+  const repeatType = document.querySelector('input[name="b-repeat"]:checked').value;
+  let repeatDays = [];
+  if (repeatType === 'custom') {
+    repeatDays = Array.from(document.querySelectorAll('input[name="b-day"]:checked'))
+      .map(cb => parseInt(cb.value));
+  }
+  
+  const templateName = prompt('Enter template name:');
+  if (!templateName) return;
+  
+  try {
+    const r = await fetch('/api/custom-presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: templateName,
+        description: `Custom template: ${label}`,
+        blocks: [{ label, start, end, color, repeatDays }]
+      })
+    });
+    if (r.status === 401) { showAuth(); return; }
+    if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
+    showToast('Template saved', 'success');
+    await loadPresets();
+  } catch (e) { showToast('Network error', 'error'); }
+});
+
+// ── Preset Remove ──────────────────────────────────────────────────
+presetRemoveBtn.addEventListener('click', async () => {
+  const presetId = presetSelect.value;
+  if (!presetId) { showToast('Select a template first', 'error'); return; }
+  if (!confirm('Remove all blocks from this template?')) return;
+  
+  try {
+    const r = await fetch(`/api/presets/${encodeURIComponent(presetId)}/remove`, { method: 'DELETE' });
+    if (r.status === 401) { showAuth(); return; }
+    if (!r.ok) { showToast(await readApiError(r, 'Remove failed'), 'error'); return; }
+    const data = await r.json();
+    showToast(`Removed ${data.removed} block(s)`, 'info');
+    await fetchSlots();
+  } catch (e) { showToast('Network error', 'error'); }
 });
 
 // ── Free time search ──────────────────────────────────────────────
@@ -2426,7 +2497,6 @@ async function checkGcalStatus() {
 buildGrid();
 async function startAuthenticatedApp(){
   await loadPresets();
-  await syncDefaultBlocksButton();
   setDate(currentDate);
   scrollToCurrent();
   await checkGcalStatus();

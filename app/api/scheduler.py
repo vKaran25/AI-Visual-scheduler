@@ -6,25 +6,11 @@ from sqlmodel import Session
 
 from app.db.models import User
 from app.db.session import get_session
-from app.schemas.scheduler import BlockRequest, DefaultBlocksRequest
+from app.schemas.scheduler import BlockRequest
 from app.services import auth_service, calendar_service, scheduler_service
 from app.services.time_utils import parse_positive_float, snap_to_30_min
 
 router = APIRouter(prefix="/api", tags=["scheduler"])
-
-
-@router.get("/settings/default-blocks")
-def get_default_blocks_setting(user: User = Depends(auth_service.get_current_user)):
-    return {"enabled": user.default_blocks_enabled}
-
-
-@router.put("/settings/default-blocks")
-def update_default_blocks_setting(
-    data: DefaultBlocksRequest,
-    session: Session = Depends(get_session),
-    user: User = Depends(auth_service.get_current_user),
-):
-    return scheduler_service.set_default_blocks_enabled(session, user, data.enabled)
 
 
 @router.get("/slots")

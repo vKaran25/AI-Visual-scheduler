@@ -154,3 +154,7 @@ def delete_custom_preset(session: Session, user: User, preset_id: int) -> bool:
     session.commit()
     return True
 
+
+def remove_preset_blocks(session: Session, user: User, preset_id: str) -> int:
+    return scheduler_service.delete_blocks_by_flags(session, user, preset_source=preset_id)
+

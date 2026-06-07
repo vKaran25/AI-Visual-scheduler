@@ -66,7 +66,6 @@ def test_user_isolation_for_blocks():
 
 def test_overlap_and_free_time_minimum():
     client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
 
     first = client.post(
         "/api/slots",
@@ -102,7 +101,6 @@ def test_overlap_and_free_time_minimum():
 
 def test_builtin_preset_and_custom_preset():
     client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
 
     presets = client.get("/api/presets")
     assert presets.status_code == 200
@@ -138,7 +136,6 @@ def test_memory_crud():
 
 def test_agent_creates_pending_plan_and_confirm(monkeypatch):
     client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
 
     from app.agents import roadmap_agent
 
@@ -181,23 +178,6 @@ def test_agent_creates_pending_plan_and_confirm(monkeypatch):
     assert confirmed.json()["count"] == 1
 
 
-def test_reenabling_defaults_with_preset_does_not_duplicate():
-    client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
-    client.post("/api/presets/student/apply", json={"clear_existing": True})
-    client.put("/api/settings/default-blocks", json={"enabled": True})
-
-    user_id = client.get("/api/me").json()["id"]
-    with Session(engine) as session:
-        user = session.get(User, user_id)
-        all_blocks = scheduler_service.user_blocks(session, user.id)
-        built_in_defaults = [b for b in all_blocks if b.preset_source == "default"]
-        assert built_in_defaults == [], (
-            "Re-enabling defaults should not add built-in Sleep/Classes on top of an active preset. "
-            f"Found: {[(b.label, b.start, b.end) for b in built_in_defaults]}"
-        )
-
-
 def test_snap_to_30_min():
     assert snap_to_30_min(datetime(2026, 6, 4, 14, 0)) == datetime(2026, 6, 4, 14, 0)
     assert snap_to_30_min(datetime(2026, 6, 4, 14, 30)) == datetime(2026, 6, 4, 14, 30)
@@ -209,7 +189,6 @@ def test_snap_to_30_min():
 
 def test_free_time_default_start_snaps_to_30_minutes():
     client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
     response = client.get("/api/free?hours=0.5")
     assert response.status_code == 200
     allocated = response.json()["allocated"]
@@ -220,7 +199,6 @@ def test_free_time_default_start_snaps_to_30_minutes():
 
 def test_agent_default_start_snaps_to_30_minutes(monkeypatch):
     client = signup_client()
-    client.put("/api/settings/default-blocks", json={"enabled": False})
 
     from app.agents import roadmap_agent
 

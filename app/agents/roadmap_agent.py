@@ -174,14 +174,15 @@ Keep every task at least 30 minutes. Prefer 1-3 tasks per day.
             ],
             response_format={"type": "json_object"},
         )
-        return json.loads(content)
-
-
-class CurriculumAgent:
-    def refine(self, plan: dict) -> dict:
-        if "days" not in plan or not isinstance(plan["days"], list):
+        parsed = json.loads(content)
+        
+        if "days" not in parsed or not isinstance(parsed["days"], list):
             raise ValueError("Planner did not return days")
-        return plan
+        for day in parsed["days"]:
+            if "tasks" not in day or not isinstance(day["tasks"], list):
+                raise ValueError("Each day must have a tasks list")
+        
+        return parsed
 
 
 class SchedulerAgent:
@@ -334,7 +335,7 @@ def run_roadmap_agent(session: Session, user: User, prompt: str, start_after: st
             "intent": "clarify",
         }
 
-    plan = CurriculumAgent().refine(PlannerAgent().plan(prompt, memories, history, facts))
+    plan = PlannerAgent().plan(prompt, memories, history, facts)
     scheduled = SchedulerAgent().schedule(session, user, plan, session_id, start_after, slack)
     conflicts = ConflictAgent().detect(session, user, scheduled)
     review = ReviewAgent().review(plan, scheduled, conflicts)

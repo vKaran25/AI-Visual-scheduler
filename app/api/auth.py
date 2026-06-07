@@ -4,7 +4,7 @@ from sqlmodel import Session
 from app.db.models import User
 from app.db.session import get_session
 from app.schemas.auth import AuthRequest, UserResponse
-from app.services import auth_service, scheduler_service
+from app.services import auth_service
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -13,7 +13,6 @@ router = APIRouter(prefix="/api", tags=["auth"])
 def signup(data: AuthRequest, response: Response, session: Session = Depends(get_session)):
     try:
         user = auth_service.create_user(session, data.email, data.password)
-        scheduler_service.ensure_default_blocks(session, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     auth_service.set_auth_cookie(response, auth_service.create_access_token(user.id))
@@ -25,7 +24,6 @@ def login(data: AuthRequest, response: Response, session: Session = Depends(get_
     user = auth_service.authenticate_user(session, data.email, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    scheduler_service.ensure_default_blocks(session, user)
     auth_service.set_auth_cookie(response, auth_service.create_access_token(user.id))
     return UserResponse(id=user.id, email=user.email)
 

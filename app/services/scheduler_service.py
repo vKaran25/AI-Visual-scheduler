@@ -15,30 +15,6 @@ from app.services.time_utils import (
     weekday_for_date,
 )
 
-DEFAULT_BLOCKS = [
-    {
-        "date": None,
-        "start": "00:00",
-        "end": "06:00",
-        "label": "Sleep",
-        "color": "#4527a0",
-        "repeatDays": [0, 1, 2, 3, 4, 5, 6],
-        "is_default": True,
-        "preset_source": "default",
-    },
-    {
-        "date": None,
-        "start": "08:30",
-        "end": "17:00",
-        "label": "Classes",
-        "color": "#2e7d32",
-        "repeatDays": [0, 1, 2, 3, 4],
-        "is_default": True,
-        "preset_source": "default",
-    },
-]
-
-
 def block_to_dict(block: Block, display_date: str | None = None) -> dict:
     repeat_days = json.loads(block.repeat_days_json or "[]")
     return {
@@ -86,8 +62,6 @@ def slot_applies_to_date(block: Block, date_str: str) -> bool:
 def slots_for_date(session: Session, user: User, date_str: str) -> list[dict]:
     out = []
     for block in user_blocks(session, user.id):
-        if block.is_default and not user.default_blocks_enabled:
-            continue
         if slot_applies_to_date(block, date_str):
             out.append(block_to_dict(block, display_date=date_str))
     return out
@@ -207,28 +181,6 @@ def delete_blocks_by_flags(session: Session, user: User, *, is_default=None, is_
         count += 1
     session.commit()
     return count
-
-
-def set_default_blocks_enabled(session: Session, user: User, enabled: bool) -> dict:
-    user.default_blocks_enabled = bool(enabled)
-    session.add(user)
-    if enabled:
-        existing_defaults = [b for b in user_blocks(session, user.id) if b.is_default]
-        if not existing_defaults:
-            for block in DEFAULT_BLOCKS:
-                create_block(session, user, block, is_default=True, preset_source="default", skip_overlap=True)
-    else:
-        delete_blocks_by_flags(session, user, is_default=True, preset_source="default")
-    session.commit()
-    return {"enabled": user.default_blocks_enabled}
-
-
-def ensure_default_blocks(session: Session, user: User) -> None:
-    if user.default_blocks_enabled:
-        defaults = [b for b in user_blocks(session, user.id) if b.is_default and b.preset_source == "default"]
-        if not defaults:
-            for block in DEFAULT_BLOCKS:
-                create_block(session, user, block, is_default=True, preset_source="default", skip_overlap=True)
 
 
 def compute_free_blocks(session: Session, user: User, start_dt_str: str, total_hours: float, max_days: int = MAX_SEARCH_DAYS) -> dict:

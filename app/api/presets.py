@@ -58,3 +58,13 @@ def delete_custom_preset(
 ):
     preset_service.delete_custom_preset(session, user, preset_id)
     return {"success": True}
+
+
+@router.delete("/presets/{preset_id}/remove")
+def remove_preset_blocks(
+    preset_id: str,
+    session: Session = Depends(get_session),
+    user: User = Depends(auth_service.get_current_user),
+):
+    count = preset_service.remove_preset_blocks(session, user, preset_id)
+    return {"success": True, "removed": count}

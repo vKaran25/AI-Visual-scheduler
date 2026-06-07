@@ -10,10 +10,6 @@ class BlockRequest(BaseModel):
     repeatDays: list[int] = []
 
 
-class DefaultBlocksRequest(BaseModel):
-    enabled: bool
-
-
 class FreeBlocksResponse(BaseModel):
     allocated: list[dict]
     totalAllocated: float
