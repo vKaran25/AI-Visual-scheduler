@@ -868,12 +868,14 @@
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
-    cursor: default;
+    cursor: pointer;
     z-index: 1;
+    transition: filter var(--trans), transform var(--trans);
   }
   .gantt-bar:hover {
     filter: brightness(1.15);
     z-index: 2;
+    transform: scaleY(1.1);
   }
   .gantt-hour-markers {
     position: absolute;
@@ -965,8 +967,21 @@
     padding: 4px 8px;
     border-bottom: 1px solid var(--border);
     font-size: 11px;
+    cursor: pointer;
+    transition: background var(--trans);
   }
   .plan-task:last-child { border-bottom: none; }
+  .plan-task:hover {
+    background: var(--accent-bg);
+  }
+  .plan-task:hover::after {
+    content: '\2192';
+    color: var(--accent2);
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
   .plan-task-time {
     font-family: 'Unbounded', sans-serif;
     font-size: 10px;
@@ -991,6 +1006,207 @@
     padding-top: 6px;
     border-top: 1px solid var(--border);
   }
+
+  /* ── AI Step Indicators ─────────────────────────────────────── */
+  .ai-welcome {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .ai-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .ai-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    transition: all var(--trans);
+    cursor: default;
+  }
+  .ai-step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+    transition: all var(--trans);
+  }
+  .ai-step-text {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    transition: color var(--trans);
+  }
+  .ai-step.active {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .ai-step.active .ai-step-num {
+    background: var(--accent);
+    color: #fff;
+  }
+  .ai-step.active .ai-step-text {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .ai-step.completed {
+    border-color: var(--green);
+    background: var(--green-bg);
+  }
+  .ai-step.completed .ai-step-num {
+    background: var(--green);
+    color: #fff;
+  }
+  .ai-step.completed .ai-step-text {
+    color: var(--green);
+  }
+  .ai-hint {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.4;
+    padding: 6px 8px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+  }
+
+  /* ── Sidebar Section Highlight ───────────────────────────────── */
+  .sb-section.highlighted {
+    border-left: 3px solid var(--accent);
+    padding-left: 11px;
+    animation: sectionGlow 0.6s ease 3;
+  }
+  .sb-section.highlighted .sb-title {
+    color: var(--accent);
+  }
+  @keyframes sectionGlow {
+    0%, 100% { box-shadow: inset 3px 0 0 var(--accent), 0 0 0 transparent; }
+    50% { box-shadow: inset 3px 0 0 var(--accent), 0 0 12px rgba(108,92,231,.15); }
+  }
+
+  /* ── Pending Block Styles ────────────────────────────────────── */
+  .block-item.pending {
+    border-style: dashed;
+    border-color: var(--accent2);
+    opacity: 0.85;
+  }
+  .block-item.pending:hover {
+    opacity: 1;
+  }
+  .busy-block.pending-block {
+    border-style: dashed;
+    opacity: 0.8;
+  }
+  .bi-badge {
+    display: inline-block;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .badge-ai {
+    background: rgba(108,92,231,.15);
+    color: var(--accent2);
+  }
+  .badge-gcal {
+    background: rgba(0,184,148,.1);
+    color: var(--green);
+  }
+  .badge-template {
+    background: rgba(253,203,110,.1);
+    color: var(--amber);
+  }
+  .badge-manual {
+    background: var(--surface3);
+    color: var(--text3);
+  }
+  .bi-duration {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    color: var(--text3);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* ── Day Summary ─────────────────────────────────────────────── */
+  .day-summary {
+    padding: 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .day-summary-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .day-summary-stats .stat-busy { color: var(--text2); }
+  .day-summary-stats .stat-free { color: var(--green); }
+  .day-summary-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-busy {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width var(--trans);
+  }
+
+  /* ── Bulk Actions ────────────────────────────────────────────── */
+  .bulk-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .bulk-actions .btn-primary,
+  .bulk-actions .btn-cancel {
+    margin-top: 0;
+    font-size: 10px;
+    padding: 5px 8px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+
+  /* ── Timeline block highlight ────────────────────────────────── */
+  @keyframes blockPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(108,92,231,0); }
+    50% { box-shadow: 0 0 0 4px rgba(108,92,231,.4); }
+  }
+  .busy-block.highlight-flash {
+    animation: blockPulse 0.6s ease 3;
+    z-index: 10;
+  }
+
   #ai-chat-input-area {
     padding: 12px 14px;
     border-top: 1px solid var(--border);
@@ -1270,7 +1486,28 @@
         <button id="ai-close-btn">✕</button>
       </div>
       <div id="ai-chat-messages">
-        <div class="ai-msg">Describe a task to schedule. I will break it down into steps and fit it into your free time.</div>
+        <div class="ai-msg">
+          <div class="ai-welcome">Welcome to AI Planner</div>
+          <div class="ai-steps" id="ai-steps">
+            <div class="ai-step active" data-step="busy">
+              <div class="ai-step-num">1</div>
+              <div class="ai-step-text">Add Busy Block</div>
+            </div>
+            <div class="ai-step" data-step="templates">
+              <div class="ai-step-num">2</div>
+              <div class="ai-step-text">Use Templates</div>
+            </div>
+            <div class="ai-step" data-step="freetime">
+              <div class="ai-step-num">3</div>
+              <div class="ai-step-text">Find Free Time</div>
+            </div>
+            <div class="ai-step" data-step="plan">
+              <div class="ai-step-num">4</div>
+              <div class="ai-step-text">AI Plan & Review</div>
+            </div>
+          </div>
+          <div class="ai-hint" id="ai-hint">Start by adding your busy blocks — classes, work, meetings.</div>
+        </div>
       </div>
       <div id="ai-chat-input-area">
         <div style="display: flex; gap: 10px; margin-bottom: 6px;">
@@ -1541,6 +1778,32 @@ function updateNowLine(){
 }
 
 // ── Fetch & render ────────────────────────────────────────────────
+let pendingHighlight = null;
+
+function executePendingHighlight() {
+  if (!pendingHighlight) return;
+  const { startMinutes } = pendingHighlight;
+  pendingHighlight = null;
+
+  tWrap.scrollTo({ top: Math.max(0, startMinutes - 120), behavior: 'smooth' });
+
+  const allBlocks = document.querySelectorAll('.busy-block');
+  let closest = null;
+  let closestDist = Infinity;
+  allBlocks.forEach(el => {
+    const blockTop = parseInt(el.style.top);
+    const dist = Math.abs(blockTop - startMinutes);
+    if (dist < closestDist) {
+      closestDist = dist;
+      closest = el;
+    }
+  });
+  if (closest) {
+    closest.classList.add('highlight-flash');
+    setTimeout(() => closest.classList.remove('highlight-flash'), 1800);
+  }
+}
+
 async function fetchSlots(){
   try {
     const r = await fetch(`/api/slots?date=${dateStr(currentDate)}`);
@@ -1551,6 +1814,8 @@ async function fetchSlots(){
     renderBlocks();
     renderSidebar();
     if(freeResults) reHighlightFree(freeResults);
+    navigateToStep(detectCurrentStep());
+    executePendingHighlight();
   } catch(e){ showToast('Failed to load slots','error'); }
 }
 
@@ -1624,7 +1889,7 @@ function renderBlocks(){
   columns.forEach((col, ci)=>{
     col.forEach(slot=>{
       const el = document.createElement('div');
-      el.className = 'busy-block';
+      el.className = 'busy-block' + (slot.is_pending ? ' pending-block' : '');
       el.dataset.id = slot.id;
       el.style.top = `${slot.startMinutes}px`;
       el.style.height = `${heightPx(slot.endMinutes-slot.startMinutes)}px`;
@@ -1634,10 +1899,10 @@ function renderBlocks(){
         el.style.left = `${60 + ci*(w*(timeline.clientWidth-68)/100)}px`;
         el.style.right = `${(totalCols-ci-1)*(w*(timeline.clientWidth-68)/100) + 8}px`;
       }
-      const repeatIcon = slot.repeatDays && slot.repeatDays.length ? ' 🔁' : '';
+      const repeatIcon = slot.repeatDays && slot.repeatDays.length ? ' \u{1f501}' : '';
       el.innerHTML = `
         <div class="blk-label">${escHtml(slot.label||'Busy')}</div>
-        <div class="blk-time">${slot.start}–${slot.end}</div>
+        <div class="blk-time">${slot.start}\u2013${slot.end}</div>
         ${repeatIcon ? `<div class="blk-repeat">${repeatIcon} Repeating</div>` : ''}
       `;
       el.addEventListener('click', e=>{ e.stopPropagation(); openEditModal(slot); });
@@ -1662,34 +1927,95 @@ function reHighlightFree(result){
 
 function renderSidebar(){
   blocksCount.textContent = allSlots.length;
-  if(!allSlots.length){
-    blocksList.innerHTML = '<div class="empty-state">No blocks for this day</div>';
+
+  let html = '';
+
+  // Day summary
+  if (allSlots.length > 0) {
+    const totalBusy = allSlots.reduce((sum, s) => sum + (s.endMinutes - s.startMinutes), 0);
+    const freeMinutes = 1440 - totalBusy;
+    const busyPct = Math.min((totalBusy / 1440) * 100, 100);
+    html += `
+      <div class="day-summary">
+        <div class="day-summary-stats">
+          <span class="stat-busy">${formatDuration(totalBusy)} busy</span>
+          <span class="stat-free">${formatDuration(freeMinutes)} free</span>
+        </div>
+        <div class="day-summary-bar">
+          <div class="bar-busy" style="width: ${busyPct}%"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Bulk actions for pending blocks
+  const pendingCount = allSlots.filter(s => s.is_pending).length;
+  if (pendingCount > 0) {
+    html += `
+      <div class="bulk-actions">
+        <button class="btn-primary" data-action="accept-all">Accept All (${pendingCount})</button>
+        <button class="btn-cancel" data-action="reject-all">Reject All</button>
+      </div>
+    `;
+  }
+
+  if (!allSlots.length) {
+    blocksList.innerHTML = html + '<div class="empty-state">No blocks for this day</div>';
     return;
   }
-  const sorted = [...allSlots].sort((a,b)=>a.startMinutes-b.startMinutes);
-  blocksList.innerHTML = '';
-  sorted.forEach(s=>{
-    const el = document.createElement('div');
-    el.className = 'block-item';
-    el.dataset.id = s.id;
-    const repeatStr = s.repeatDays&&s.repeatDays.length
-      ? `🔁 ${s.repeatDays.map(d=>DAY_NAMES[d]).join(', ')}`
+
+  const sorted = [...allSlots].sort((a, b) => a.startMinutes - b.startMinutes);
+  sorted.forEach(s => {
+    const repeatStr = s.repeatDays && s.repeatDays.length
+      ? `\u{1f501} ${s.repeatDays.map(d => DAY_NAMES[d]).join(', ')}`
       : '';
-    el.innerHTML = `
-      <div class="bi-dot" style="background:${s.color}"></div>
-      <div class="bi-info">
-        <div class="bi-label">${escHtml(s.label||'Busy')}</div>
-        <div class="bi-time">${s.start} – ${s.end}</div>
-        ${repeatStr ? `<div class="bi-repeat">${repeatStr}</div>` : ''}
+
+    let badge = '';
+    if (s.is_pending) badge = '<span class="bi-badge badge-ai">AI</span>';
+    else if (s.is_gcal) badge = '<span class="bi-badge badge-gcal">GCal</span>';
+    else if (s.preset_source) badge = '<span class="bi-badge badge-template">Template</span>';
+    else badge = '<span class="bi-badge badge-manual">Manual</span>';
+
+    const duration = formatDuration(s.endMinutes - s.startMinutes);
+
+    html += `
+      <div class="block-item${s.is_pending ? ' pending' : ''}" data-id="${s.id}">
+        <div class="bi-dot" style="background:${s.color}"></div>
+        <div class="bi-info">
+          <div class="bi-label">${escHtml(s.label || 'Busy')}</div>
+          <div class="bi-time">${s.start} – ${s.end}</div>
+          ${repeatStr ? `<div class="bi-repeat">${repeatStr}</div>` : ''}
+        </div>
+        ${badge}
+        <span class="bi-duration">${duration}</span>
+        <button class="bi-del" data-id="${s.id}" title="Delete">\u2715</button>
       </div>
-      <button class="bi-del" data-id="${s.id}" title="Delete">✕</button>
     `;
-    el.querySelector('.bi-del').addEventListener('click', e=>{
+  });
+
+  blocksList.innerHTML = html;
+
+  // Attach event listeners
+  blocksList.querySelectorAll('.block-item').forEach(el => {
+    const id = parseInt(el.dataset.id);
+    el.querySelector('.bi-del').addEventListener('click', e => {
       e.stopPropagation();
-      deleteSlot(s.id);
+      deleteSlot(id);
     });
-    el.addEventListener('click', ()=>openEditModal(s));
-    blocksList.appendChild(el);
+    el.addEventListener('click', () => {
+      const slot = allSlots.find(s => s.id === id);
+      if (slot) openEditModal(slot);
+    });
+  });
+
+  // Bulk action event delegation
+  blocksList.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      if (action === 'accept-all') acceptAllPending();
+      else if (action === 'reject-all') rejectAllPending();
+    });
   });
 }
 
@@ -2122,10 +2448,16 @@ function renderPlanReview(review) {
       const bmm = blockMin % 60;
       const blockDur = bm > 0 ? (bmm > 0 ? `${bm}h ${bmm}m` : `${bm}h`) : `${bmm}m`;
       taskEl.innerHTML = `
-        <span class="plan-task-time">${block.start}\u2013${block.end}</span>
+        <span class="plan-task-time">${escHtml(block.start)}\u2013${escHtml(block.end)}</span>
         <span class="plan-task-label">${escHtml(block.label)}</span>
         <span class="plan-task-dur">${blockDur}</span>
       `;
+      const bStartMin = parseInt(block.start.split(':')[0]) * 60 + parseInt(block.start.split(':')[1]);
+      taskEl.dataset.date = day.date;
+      taskEl.dataset.startMin = bStartMin;
+      taskEl.addEventListener('click', () => {
+        navigateToBlock(day.date, bStartMin);
+      });
       dayEl.appendChild(taskEl);
     });
 
@@ -2249,7 +2581,12 @@ function renderGantt(scheduled) {
       bar.style.width = Math.max(widthPct, 2) + '%';
       bar.style.background = color;
       bar.textContent = b.label || 'Task';
-      bar.title = `${b.label}\n${b.start} – ${b.end}`;
+      bar.title = `${b.label}\n${b.start} \u2013 ${b.end}`;
+      bar.dataset.date = b.date;
+      bar.dataset.id = b.id || '';
+      bar.addEventListener('click', () => {
+        navigateToBlock(b.date, startMin);
+      });
       rowBars.appendChild(bar);
 
       legendItems.push({ label: b.label, color });
@@ -2302,6 +2639,102 @@ function updateAiBtnStyle() {
     aiChatBtn.style.background = 'var(--surface2)';
     aiChatBtn.style.color = 'var(--text2)';
     aiChatBtn.style.borderColor = 'var(--border)';
+  }
+}
+
+// ── Duration helper ────────────────────────────────────────────────
+function formatDuration(m) {
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  if (h && min) return `${h}h ${min}m`;
+  if (h) return `${h}h`;
+  return `${min}m`;
+}
+
+// ── Guided Workflow Steps ─────────────────────────────────────────
+const stepHints = {
+  busy: 'Start by adding your busy blocks — classes, work, meetings.',
+  templates: 'Apply a template to quickly set up recurring schedules.',
+  freetime: 'Search for available time slots across upcoming days.',
+  plan: 'Review your AI-generated plan. Accept to confirm, or reject to try again.'
+};
+
+const stepToSectionIndex = {
+  busy: 0,
+  templates: 1,
+  freetime: 2,
+  plan: 3
+};
+
+function detectCurrentStep() {
+  const hasPending = allSlots.some(s => s.is_pending);
+  if (hasPending) return 'plan';
+  if (allSlots.length === 0) return 'busy';
+  return 'templates';
+}
+
+function updateStepIndicator(activeStep) {
+  const stepsEl = document.getElementById('ai-steps');
+  const hintEl = document.getElementById('ai-hint');
+  if (!stepsEl || !hintEl) return;
+
+  const steps = stepsEl.querySelectorAll('.ai-step');
+  const stepOrder = ['busy', 'templates', 'freetime', 'plan'];
+  const activeIdx = stepOrder.indexOf(activeStep);
+
+  steps.forEach((el, i) => {
+    el.classList.remove('active', 'completed');
+    if (i < activeIdx) el.classList.add('completed');
+    else if (i === activeIdx) el.classList.add('active');
+  });
+
+  hintEl.textContent = stepHints[activeStep] || '';
+}
+
+function highlightSidebarSection(activeStep) {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  const sections = sidebar.querySelectorAll('.sb-section');
+  sections.forEach(s => s.classList.remove('highlighted'));
+
+  const idx = stepToSectionIndex[activeStep];
+  if (idx !== undefined && sections[idx]) {
+    sections[idx].classList.add('highlighted');
+    sections[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function navigateToStep(activeStep) {
+  updateStepIndicator(activeStep);
+  highlightSidebarSection(activeStep);
+}
+
+// ── Click-to-navigate from plan/gantt to timeline ─────────────────
+function navigateToBlock(blockDate, startMinutes) {
+  const targetDate = new Date(blockDate + 'T00:00:00');
+  const isDifferentDate = targetDate.getTime() !== currentDate.getTime();
+
+  if (isDifferentDate) {
+    pendingHighlight = { startMinutes };
+    setDate(targetDate);
+  } else {
+    tWrap.scrollTo({ top: Math.max(0, startMinutes - 120), behavior: 'smooth' });
+
+    const allBlocks = document.querySelectorAll('.busy-block');
+    let closest = null;
+    let closestDist = Infinity;
+    allBlocks.forEach(el => {
+      const blockTop = parseInt(el.style.top);
+      const dist = Math.abs(blockTop - startMinutes);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = el;
+      }
+    });
+    if (closest) {
+      closest.classList.add('highlight-flash');
+      setTimeout(() => closest.classList.remove('highlight-flash'), 1800);
+    }
   }
 }
 
@@ -2443,6 +2876,37 @@ window.rejectAiEvents = async function(sessionId, containerId) {
     }
 };
 
+// ── Bulk accept/reject pending blocks ──────────────────────────────
+async function acceptAllPending() {
+  const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
+  for (const sid of pendingSessionIds) {
+    try {
+      await fetch('/api/chat/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid })
+      });
+    } catch (e) { /* continue */ }
+  }
+  showToast('All pending blocks accepted', 'success');
+  fetchSlots();
+}
+
+async function rejectAllPending() {
+  const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
+  for (const sid of pendingSessionIds) {
+    try {
+      await fetch('/api/chat/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid })
+      });
+    } catch (e) { /* continue */ }
+  }
+  showToast('All pending blocks removed', 'info');
+  fetchSlots();
+}
+
 aiSendBtn.addEventListener('click', sendAiMessage);
 aiPrompt.addEventListener('keydown', e => {
   if(e.key === 'Enter' && !e.shiftKey) {
@@ -2469,7 +2933,7 @@ async function checkGcalStatus() {
         const logoutRes = await fetch('/api/google/oauth/logout', {method: 'POST'});
         if(logoutRes.status === 401){ showAuth(); return; }
         checkGcalStatus();
-        fetchSlots(currentDate);
+        fetchSlots();
       };
     } else {
       gcalConnBtn.textContent = 'Connect GCal';
@@ -2484,9 +2948,9 @@ async function checkGcalStatus() {
            if(!res.ok) return;
            const pollingData = await res.json();
            if(pollingData.connected) {
-             clearInterval(poll);
-             checkGcalStatus();
-             fetchSlots(currentDate);
+              clearInterval(poll);
+              checkGcalStatus();
+              fetchSlots();
            }
          }, 1500);
       };
