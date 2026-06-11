@@ -48,15 +48,14 @@
     z-index: 0;
     pointer-events: none;
     /* 3D perspective container */
-    perspective: 900px;
-    perspective-origin: 38% 50%;
+    perspective: 1200px;
+    perspective-origin: 55% 50%;
   }
   #bg-canvas {
     width: 100%;
     height: 100%;
-    /* offset left + 3D tilt */
-    transform-origin: 38% 50%;
-    transform: translateX(-8%) rotateY(14deg) rotateX(6deg) scale(1.12);
+    transform-origin: 55% 50%;
+    transform: rotateY(-10deg) rotateX(5deg) scale(1.06);
   }
 
   /* vignette overlay */
@@ -364,19 +363,22 @@ checkAuth();
   /* Scene 0 — Timeline */
   function drawTimeline(t, masterAlpha) {
     const a   = masterAlpha;
-    const lx  = W * 0.14;
-    const blL = W * 0.20;
-    const blR = W * 0.78;
+    const lx  = W * 0.10;
+    const blL = W * 0.16;
+    const blR = W * 0.62;
 
     /* axis line */
     ctx.save();
-    ctx.globalAlpha = a * 0.18;
+    ctx.globalAlpha = a * 0.35;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(lx, H * 0.04); ctx.lineTo(lx, H * 0.96); ctx.stroke();
+    ctx.restore();
 
     /* time labels */
-    ctx.fillStyle = '#fff';
+    ctx.save();
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillStyle = '#c0c0d8';
     ctx.font = '600 10px Unbounded, sans-serif';
     ctx.textAlign = 'right';
     for (let i = 0; i < 5; i++) {
@@ -395,7 +397,7 @@ checkAuth();
 
       /* glow */
       ctx.save();
-      ctx.globalAlpha = a * 0.55 * p;
+      ctx.globalAlpha = a * 0.75 * p;
       ctx.shadowColor = b.color;
       ctx.shadowBlur  = 28;
       ctx.fillStyle   = b.color;
@@ -404,14 +406,14 @@ checkAuth();
 
       /* glass highlight */
       ctx.save();
-      ctx.globalAlpha = a * 0.18 * p;
+      ctx.globalAlpha = a * 0.25 * p;
       ctx.fillStyle   = '#fff';
       roundRect(ctx, blL, yy, bw, bh * 0.38, 4); ctx.fill();
       ctx.restore();
 
       /* tick mark */
       ctx.save();
-      ctx.globalAlpha = a * 0.25 * p;
+      ctx.globalAlpha = a * 0.5 * p;
       ctx.strokeStyle = b.color;
       ctx.lineWidth   = 1;
       ctx.beginPath(); ctx.moveTo(lx - 4, yy + bh / 2); ctx.lineTo(lx + 4, yy + bh / 2); ctx.stroke();
@@ -423,7 +425,7 @@ checkAuth();
     if (np > 0) {
       const ny = H * 0.42;
       ctx.save();
-      ctx.globalAlpha = a * 1.0 * np;
+      ctx.globalAlpha = a * np;
       ctx.shadowColor = '#e17055'; ctx.shadowBlur = 16 * np;
       ctx.strokeStyle = '#e17055'; ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
@@ -442,22 +444,22 @@ checkAuth();
     const gap    = H * 0.032;
     const totalH = LS_ITEMS.length * (itemH + gap) - gap;
     const startY = (H - totalH) / 2;
-    const padX   = W * 0.10;
-    const itemW  = W - padX * 2;
+    const padX   = W * 0.07;
+    const itemW  = W * 0.60;
 
     LS_ITEMS.forEach((item, i) => {
       const p  = easeOut((t - item.delay) / 0.65);
       if (p <= 0) return;
       const yy = startY + i * (itemH + gap);
-      const ox = (1 - p) * 32; /* slide in from right */
+      const ox = (1 - p) * 32;
 
       /* card bg */
       ctx.save();
-      ctx.globalAlpha = a * 0.75 * p;
+      ctx.globalAlpha = a * 0.85 * p;
       ctx.fillStyle   = '#1c1c20';
       roundRect(ctx, padX + ox, yy, itemW, itemH, 5); ctx.fill();
+      ctx.globalAlpha = a * 0.5 * p;
       ctx.strokeStyle = '#2c2c34'; ctx.lineWidth = 1;
-      ctx.globalAlpha = a * 0.4 * p;
       roundRect(ctx, padX + ox, yy, itemW, itemH, 5); ctx.stroke();
       ctx.restore();
 
@@ -466,7 +468,7 @@ checkAuth();
       const cy2 = yy + itemH / 2;
       ctx.save();
       ctx.globalAlpha = a * p;
-      ctx.strokeStyle = item.done ? '#00b894' : '#2c2c34';
+      ctx.strokeStyle = item.done ? '#00b894' : '#3a3a4a';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(cx2, cy2, 6, 0, Math.PI * 2); ctx.stroke();
       if (item.done) {
@@ -476,32 +478,30 @@ checkAuth();
       }
       ctx.restore();
 
-      /* progress bar */
+      /* progress bar track */
       const barX = padX + ox + 30;
       const barW = (itemW - 44) * item.bar * p;
       const barY = yy + itemH * 0.30;
-      const barH = itemH * 0.38;
-      /* track */
+      const barH2 = itemH * 0.38;
       ctx.save();
-      ctx.globalAlpha = a * 0.15 * p;
+      ctx.globalAlpha = a * 0.18 * p;
       ctx.fillStyle   = item.color;
-      roundRect(ctx, barX, barY, itemW - 44, barH, 3); ctx.fill();
+      roundRect(ctx, barX, barY, itemW - 44, barH2, 3); ctx.fill();
       ctx.restore();
       /* fill */
       ctx.save();
       ctx.globalAlpha = a * p;
       ctx.shadowColor = item.color; ctx.shadowBlur = 14 * p;
       ctx.fillStyle   = item.color;
-      roundRect(ctx, barX, barY, barW, barH, 3); ctx.fill();
+      roundRect(ctx, barX, barY, barW, barH2, 3); ctx.fill();
       ctx.restore();
     });
 
-    /* pulsing "AI" indicator on 3rd item */
+    /* pulsing AI dot */
     const sp = easeOut((t - 2.5) / 0.5);
     if (sp > 0) {
-      const idx = 2;
-      const yy  = startY + idx * (itemH + gap) + itemH / 2;
-      const sx  = W - W * 0.10 - 20;
+      const yy  = startY + 2 * (itemH + gap) + itemH / 2;
+      const sx  = padX + itemW - 14;
       const pulse = 1 + 0.18 * Math.sin(t * 5.5);
       ctx.save();
       ctx.globalAlpha = a * sp;
@@ -514,34 +514,34 @@ checkAuth();
 
   /* Scene 2 — Bar chart */
   function drawChart(t, masterAlpha) {
-    const a     = masterAlpha;
-    const padX  = W * 0.10;
-    const padYT = H * 0.14;
-    const padYB = H * 0.14;
+    const a      = masterAlpha;
+    const padX   = W * 0.07;
+    const padYT  = H * 0.14;
+    const padYB  = H * 0.14;
     const bottom = H - padYB;
     const chartH = H - padYT - padYB;
+    const chartW = W * 0.60;
     const nBars  = CH_HEIGHTS.length;
-    const barGap = W * 0.022;
-    const barW   = (W - padX * 2 - barGap * (nBars - 1)) / nBars;
+    const barGap = chartW * 0.04;
+    const barW   = (chartW - barGap * (nBars - 1)) / nBars;
 
     /* grid lines */
     ctx.save();
-    ctx.globalAlpha = a * 0.07;
+    ctx.globalAlpha = a * 0.12;
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
     for (let g = 1; g <= 3; g++) {
       const gy = bottom - (chartH * g / 4);
-      ctx.beginPath(); ctx.moveTo(padX, gy); ctx.lineTo(W - padX, gy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(padX, gy); ctx.lineTo(padX + chartW, gy); ctx.stroke();
     }
     ctx.restore();
 
     CH_HEIGHTS.forEach((bh, i) => {
       const p  = easeOut((t - i * 0.18) / 0.85);
       if (p <= 0) return;
-      const xx     = padX + i * (barW + barGap);
+      const xx      = padX + i * (barW + barGap);
       const actualH = chartH * bh * p;
-      const yy     = bottom - actualH;
+      const yy      = bottom - actualH;
 
-      /* glow */
       ctx.save();
       ctx.globalAlpha = a * p;
       ctx.shadowColor = CH_COLORS[i]; ctx.shadowBlur = 22 * p;
@@ -549,20 +549,19 @@ checkAuth();
       roundRect(ctx, xx, yy, barW, actualH, 4); ctx.fill();
       ctx.restore();
 
-      /* glass highlight */
       ctx.save();
-      ctx.globalAlpha = a * 0.22 * p;
+      ctx.globalAlpha = a * 0.25 * p;
       ctx.fillStyle   = '#fff';
       roundRect(ctx, xx, yy, barW, actualH * 0.38, 4); ctx.fill();
       ctx.restore();
 
-      /* label */
+      /* day label */
       ctx.save();
-      ctx.globalAlpha = a * 0.55 * p;
-      ctx.fillStyle   = '#8a8aa0';
+      ctx.globalAlpha = a * 0.9 * p;
+      ctx.fillStyle   = '#b0b0c8';
       ctx.font        = '600 9px Unbounded, sans-serif';
       ctx.textAlign   = 'center';
-      ctx.fillText(CH_LABELS[i], xx + barW / 2, bottom + 13);
+      ctx.fillText(CH_LABELS[i], xx + barW / 2, bottom + 14);
       ctx.restore();
     });
 
@@ -585,7 +584,6 @@ checkAuth();
         i === 0 ? ctx.moveTo(p2.x, p2.y) : ctx.lineTo(p2.x, p2.y);
       });
       ctx.stroke();
-      /* moving dot at the front */
       const dotIdx = Math.min(Math.floor(drawUpTo), pts.length - 1);
       const dot    = pts[dotIdx];
       ctx.beginPath(); ctx.arc(dot.x, dot.y, 4, 0, Math.PI * 2);
