@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* ── CSS Variables ─────────────────────────────────────────────── */
   :root {
     --bg:        #0e0e10;
     --surface:   #151518;
@@ -20,23 +19,13 @@
     --accent2:   #a29bfe;
     --accent-bg: rgba(108,92,231,.08);
     --red:       #e17055;
-    --radius:    3px;
+    --green:     #00b894;
+    --blue:      #0984e3;
+    --orange:    #e17055;
+    --pink:      #d6309e;
+    --radius:    4px;
     --trans:     .15s ease;
   }
-  [data-theme="light"] {
-    --bg:       #e8e8ec;
-    --surface:  #f2f2f5;
-    --surface2: #eaeaed;
-    --border:   #c5c5d0;
-    --text:     #1a1a2e;
-    --text2:    #55556e;
-    --accent:   #5b4de0;
-    --accent2:  #7c6af0;
-    --accent-bg: rgba(91,77,224,.08);
-    --red:       #d63031;
-  }
-
-  /* ── Reset ─────────────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'DM Sans', sans-serif;
@@ -44,54 +33,124 @@
     color: var(--text);
     font-size: 14px;
     line-height: 1.5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
   }
   button { cursor: pointer; font-family: inherit; }
-  input { font-family: inherit; }
+  input  { font-family: inherit; }
 
-  /* ── Layout ────────────────────────────────────────────────────── */
-  .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 32px;
-    max-width: 800px;
-    padding: 32px;
-    text-align: center;
+  /* ── Background canvas ─────────────────────────── */
+  .bg-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* 3D perspective container */
+    perspective: 1200px;
+    perspective-origin: 55% 50%;
+  }
+  #bg-canvas {
+    width: 100%;
+    height: 100%;
+    transform-origin: 55% 50%;
+    transform: rotateY(-10deg) rotateX(5deg) scale(1.06);
   }
 
+  /* vignette overlay */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 75% 75% at 50% 50%,
+        transparent 20%,
+        rgba(14,14,16,0.65) 60%,
+        rgba(14,14,16,0.97) 100%
+      ),
+      linear-gradient(to right,
+        rgba(14,14,16,0.72) 0%,
+        rgba(14,14,16,0.20) 45%,
+        rgba(14,14,16,0.0)  70%
+      );
+  }
+
+  /* ── Layout ────────────────────────────────────── */
+  .page {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    align-items: center;
+    min-height: 100vh;
+    padding: 60px 48px;
+    gap: 40px;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ── Hero ──────────────────────────────────────── */
+  .hero { text-align: left; }
+  .hero-badge {
+    display: inline-block;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: rgba(108,92,231,.18);
+    border: 1px solid rgba(108,92,231,.35);
+    border-radius: 20px;
+    padding: 5px 14px;
+    margin-bottom: 20px;
+  }
   .hero-title {
     font-family: 'Unbounded', sans-serif;
-    font-size: 42px;
-    font-weight: 800;
-    color: var(--accent);
-    letter-spacing: -1px;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -2px;
+    line-height: 1.05;
     text-transform: uppercase;
-    line-height: 1.1;
+    text-shadow: 0 0 40px rgba(108,92,231,.25);
   }
+  .hero-title .accent { color: var(--accent); }
   .hero-subtitle {
-    font-size: 18px;
-    color: var(--text2);
-    max-width: 500px;
+    font-size: 15px;
+    color: #b0b0c8;
     margin-top: 16px;
+    text-shadow: 0 1px 8px rgba(0,0,0,.8);
   }
 
+  /* ── Auth card ─────────────────────────────────── */
   .auth-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px;
-    width: 360px;
+    border-radius: 8px;
+    padding: 28px;
+    width: 340px;
     text-align: left;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    position: relative;
+    flex-shrink: 0;
   }
-  .form-row { margin-bottom: 16px; }
-  .form-col { display: flex; flex-direction: column; gap: 6px; }
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), transparent 60%);
+    z-index: -1;
+    opacity: 0.3;
+  }
+  .form-row { margin-bottom: 14px; }
+  .form-col { display: flex; flex-direction: column; gap: 5px; }
   .form-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text2);
     letter-spacing: .5px;
@@ -103,20 +162,20 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text);
-    padding: 10px;
-    font-size: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
     width: 100%;
     transition: border-color var(--trans);
   }
   .form-input:focus {
     outline: none;
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,92,231,.15);
   }
-
   .auth-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 24px;
+    gap: 10px;
+    margin-top: 20px;
   }
   .btn-primary {
     background: var(--accent);
@@ -125,13 +184,14 @@
     border-radius: var(--radius);
     padding: 10px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     flex: 1;
-    transition: background var(--trans);
+    transition: all var(--trans);
     text-transform: uppercase;
     letter-spacing: .5px;
+    font-family: 'Unbounded', sans-serif;
   }
-  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
   .btn-secondary {
     background: var(--surface2);
     color: var(--text2);
@@ -139,57 +199,44 @@
     border-radius: var(--radius);
     padding: 10px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     flex: 1;
-    transition: background var(--trans), color var(--trans);
+    transition: all var(--trans);
     text-transform: uppercase;
     letter-spacing: .5px;
+    font-family: 'Unbounded', sans-serif;
   }
-  .btn-secondary:hover {
-    background: var(--border);
-    color: var(--text);
-  }
-
+  .btn-secondary:hover { background: var(--border); color: var(--text); }
   .error-msg {
     color: var(--red);
-    font-size: 12px;
-    margin-top: 12px;
+    font-size: 11px;
+    margin-top: 10px;
     text-align: center;
   }
-  
-  .features {
-    display: flex;
-    gap: 24px;
-    margin-top: 32px;
-    text-align: left;
-  }
-  .feature-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 24px;
-    border-radius: var(--radius);
-    flex: 1;
-  }
-  .feature-box h3 {
-    font-family: 'Unbounded', sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-  .feature-box p {
-    color: var(--text2);
-    font-size: 13px;
+
+  @media (max-width: 820px) {
+    .page {
+      grid-template-columns: 1fr;
+      padding: 48px 28px 40px;
+      gap: 36px;
+    }
+    .hero { text-align: center; }
+    .auth-card { width: 100%; max-width: 340px; margin: 0 auto; }
   }
 </style>
 </head>
 <body>
 
-<div class="container" id="main-content" style="display: none;">
-  <div>
-    <div class="hero-title">Predestination</div>
-    <div class="hero-subtitle">The AI-powered visual scheduler for your day. Log in to access your blocks, memory, and personalized planner.</div>
+<div class="bg-stage">
+  <canvas id="bg-canvas"></canvas>
+</div>
+<div class="vignette"></div>
+
+<div class="page" id="main-content" style="display: none;">
+  <div class="hero">
+    <div class="hero-badge">AI-Powered Scheduler</div>
+    <div class="hero-title"><span class="accent">Pre</span>destination</div>
+    <div class="hero-subtitle">Your day, intelligently planned. Drop your tasks — the AI finds the perfect slots.</div>
   </div>
 
   <div class="auth-card">
@@ -211,94 +258,406 @@
     </div>
     <div id="auth-error" class="error-msg"></div>
   </div>
-  
-  <div class="features">
-    <div class="feature-box">
-      <h3>AI Planning</h3>
-      <p>Let an AI assistant organize your tasks into free slots seamlessly.</p>
-    </div>
-    <div class="feature-box">
-      <h3>GCal Sync</h3>
-      <p>Connect your Google Calendar and keep everything perfectly synced in real time.</p>
-    </div>
-    <div class="feature-box">
-      <h3>Presets</h3>
-      <p>Save recurring schedules like 'Exam Prep' or 'Fitness' and apply them instantly.</p>
-    </div>
-  </div>
 </div>
 
 <script>
-const authEmail = document.getElementById('auth-email');
+/* ── Auth ──────────────────────────────────────────────────────── */
+const authEmail    = document.getElementById('auth-email');
 const authPassword = document.getElementById('auth-password');
-const authError = document.getElementById('auth-error');
-const mainContent = document.getElementById('main-content');
+const authError    = document.getElementById('auth-error');
+const mainContent  = document.getElementById('main-content');
 
 async function checkAuth() {
-  try {
-    const r = await fetch('/api/me');
-    if (r.ok) {
-      window.location.href = '/';
-      return;
-    }
-  } catch (e) {
-    // Ignore error, proceed to show login
-  }
+  try { const r = await fetch('/api/me'); if (r.ok) { window.location.href = '/'; return; } } catch (e) {}
   mainContent.style.display = 'flex';
 }
-
 async function readApiError(response, fallback='Request failed') {
   try {
     const data = await response.json();
-    if (data.detail) {
-      if (Array.isArray(data.detail)) {
-        return data.detail[0].msg || fallback;
-      }
-      return data.detail;
-    }
+    if (data.detail) { return Array.isArray(data.detail) ? data.detail[0].msg || fallback : data.detail; }
     return data.error || fallback;
-  } catch(e) {
-    return fallback;
-  }
+  } catch(e) { return fallback; }
 }
-
 async function submitAuth(mode) {
-  const email = authEmail.value.trim();
-  const password = authPassword.value;
+  const email = authEmail.value.trim(), password = authPassword.value;
   authError.textContent = '';
-  
-  if(!email || !password){
-    authError.textContent = 'Email and password are required.';
-    return;
-  }
-  
+  if (!email || !password) { authError.textContent = 'Email and password are required.'; return; }
   try {
-    const r = await fetch(`/api/auth/${mode}`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password})
-    });
-    
-    if(!r.ok){
-      authError.textContent = await readApiError(r, 'Could not sign in.');
-      return;
-    }
-    
-    // Success, redirect to main app
+    const r = await fetch(`/api/auth/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
+    if (!r.ok) { authError.textContent = await readApiError(r, 'Could not sign in.'); return; }
     window.location.href = '/';
-  } catch(e) {
-    authError.textContent = 'Network error.';
-  }
+  } catch(e) { authError.textContent = 'Network error.'; }
 }
-
-document.getElementById('auth-login-btn').addEventListener('click', ()=>submitAuth('login'));
-document.getElementById('auth-signup-btn').addEventListener('click', ()=>submitAuth('signup'));
-authPassword.addEventListener('keydown', e => {
-  if(e.key === 'Enter') submitAuth('login');
-});
-
-// Run auth check on load
+document.getElementById('auth-login-btn').addEventListener('click', () => submitAuth('login'));
+document.getElementById('auth-signup-btn').addEventListener('click', () => submitAuth('signup'));
+authPassword.addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
 checkAuth();
+
+/* ── Background animation ──────────────────────────────────────── */
+(function () {
+  const cv  = document.getElementById('bg-canvas');
+  const ctx = cv.getContext('2d');
+  let W, H, dpr;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = cv.parentElement.clientWidth;
+    H = cv.parentElement.clientHeight;
+    cv.width  = W * dpr;
+    cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ─── Timeline blocks (scene 0) ─────────────────────────── */
+  const TL_BLOCKS = [
+    { yFrac: 0.10, hFrac: 0.16, color: '#6c5ce7', delay: 0.0  },
+    { yFrac: 0.32, hFrac: 0.13, color: '#00b894', delay: 0.45 },
+    { yFrac: 0.51, hFrac: 0.20, color: '#e17055', delay: 0.90 },
+    { yFrac: 0.78, hFrac: 0.11, color: '#0984e3', delay: 1.35 },
+  ];
+
+  /* ─── Task list rows (scene 1) ──────────────────────────── */
+  const LS_ITEMS = [
+    { bar: 0.80, color: '#6c5ce7', done: true,  delay: 0.00 },
+    { bar: 0.60, color: '#00b894', done: true,  delay: 0.35 },
+    { bar: 0.90, color: '#e17055', done: false, delay: 0.70 },
+    { bar: 0.45, color: '#0984e3', done: false, delay: 1.05 },
+    { bar: 0.70, color: '#d6309e', done: false, delay: 1.40 },
+  ];
+
+  /* ─── Bar chart (scene 2) ───────────────────────────────── */
+  const CH_HEIGHTS = [0.55, 0.75, 0.40, 0.90, 0.60, 0.80, 0.45];
+  const CH_COLORS  = ['#6c5ce7','#00b894','#0984e3','#e17055','#d6309e','#a29bfe','#00b894'];
+  const CH_LABELS  = ['M','T','W','T','F','S','S'];
+
+  /* ─── Shared helpers ────────────────────────────────────── */
+  function easeOut(t) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3); }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  /* hex color → rgba string with alpha */
+  function rgba(hex, a) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  /* ─── Scene draw functions ──────────────────────────────── */
+
+  /* Scene 0 — Timeline */
+  function drawTimeline(t, masterAlpha) {
+    const a   = masterAlpha;
+    const lx  = W * 0.10;
+    const blL = W * 0.16;
+    const blR = W * 0.62;
+
+    /* axis line */
+    ctx.save();
+    ctx.globalAlpha = a * 0.35;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, H * 0.04); ctx.lineTo(lx, H * 0.96); ctx.stroke();
+    ctx.restore();
+
+    /* time labels */
+    ctx.save();
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillStyle = '#c0c0d8';
+    ctx.font = '600 10px Unbounded, sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i < 5; i++) {
+      const yy = H * 0.06 + (H * 0.88) * (i / 4);
+      ctx.fillText((9 + i * 2) + ':00', lx - 8, yy + 4);
+    }
+    ctx.restore();
+
+    /* blocks */
+    TL_BLOCKS.forEach(b => {
+      const p  = easeOut((t - b.delay) / 0.9);
+      if (p <= 0) return;
+      const bw = (blR - blL) * p;
+      const yy = H * b.yFrac;
+      const bh = H * b.hFrac;
+
+      /* glow */
+      ctx.save();
+      ctx.globalAlpha = a * 0.75 * p;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur  = 28;
+      ctx.fillStyle   = b.color;
+      roundRect(ctx, blL, yy, bw, bh, 4); ctx.fill();
+      ctx.restore();
+
+      /* glass highlight */
+      ctx.save();
+      ctx.globalAlpha = a * 0.25 * p;
+      ctx.fillStyle   = '#fff';
+      roundRect(ctx, blL, yy, bw, bh * 0.38, 4); ctx.fill();
+      ctx.restore();
+
+      /* tick mark */
+      ctx.save();
+      ctx.globalAlpha = a * 0.5 * p;
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(lx - 4, yy + bh / 2); ctx.lineTo(lx + 4, yy + bh / 2); ctx.stroke();
+      ctx.restore();
+    });
+
+    /* "now" indicator */
+    const np = easeOut((t - 2.3) / 0.7);
+    if (np > 0) {
+      const ny = H * 0.42;
+      ctx.save();
+      ctx.globalAlpha = a * np;
+      ctx.shadowColor = '#e17055'; ctx.shadowBlur = 16 * np;
+      ctx.strokeStyle = '#e17055'; ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(lx - 6, ny); ctx.lineTo(blR + 16, ny); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(lx - 6, ny, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#e17055'; ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* Scene 1 — Task list */
+  function drawList(t, masterAlpha) {
+    const a      = masterAlpha;
+    const itemH  = H * 0.105;
+    const gap    = H * 0.032;
+    const totalH = LS_ITEMS.length * (itemH + gap) - gap;
+    const startY = (H - totalH) / 2;
+    const padX   = W * 0.07;
+    const itemW  = W * 0.60;
+
+    LS_ITEMS.forEach((item, i) => {
+      const p  = easeOut((t - item.delay) / 0.65);
+      if (p <= 0) return;
+      const yy = startY + i * (itemH + gap);
+      const ox = (1 - p) * 32;
+
+      /* card bg */
+      ctx.save();
+      ctx.globalAlpha = a * 0.85 * p;
+      ctx.fillStyle   = '#1c1c20';
+      roundRect(ctx, padX + ox, yy, itemW, itemH, 5); ctx.fill();
+      ctx.globalAlpha = a * 0.5 * p;
+      ctx.strokeStyle = '#2c2c34'; ctx.lineWidth = 1;
+      roundRect(ctx, padX + ox, yy, itemW, itemH, 5); ctx.stroke();
+      ctx.restore();
+
+      /* checkbox */
+      const cx2 = padX + ox + 16;
+      const cy2 = yy + itemH / 2;
+      ctx.save();
+      ctx.globalAlpha = a * p;
+      ctx.strokeStyle = item.done ? '#00b894' : '#3a3a4a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx2, cy2, 6, 0, Math.PI * 2); ctx.stroke();
+      if (item.done) {
+        ctx.beginPath();
+        ctx.moveTo(cx2 - 3.5, cy2); ctx.lineTo(cx2 - 0.5, cy2 + 3); ctx.lineTo(cx2 + 4.5, cy2 - 3);
+        ctx.strokeStyle = '#00b894'; ctx.stroke();
+      }
+      ctx.restore();
+
+      /* progress bar track */
+      const barX = padX + ox + 30;
+      const barW = (itemW - 44) * item.bar * p;
+      const barY = yy + itemH * 0.30;
+      const barH2 = itemH * 0.38;
+      ctx.save();
+      ctx.globalAlpha = a * 0.18 * p;
+      ctx.fillStyle   = item.color;
+      roundRect(ctx, barX, barY, itemW - 44, barH2, 3); ctx.fill();
+      ctx.restore();
+      /* fill */
+      ctx.save();
+      ctx.globalAlpha = a * p;
+      ctx.shadowColor = item.color; ctx.shadowBlur = 14 * p;
+      ctx.fillStyle   = item.color;
+      roundRect(ctx, barX, barY, barW, barH2, 3); ctx.fill();
+      ctx.restore();
+    });
+
+    /* pulsing AI dot */
+    const sp = easeOut((t - 2.5) / 0.5);
+    if (sp > 0) {
+      const yy  = startY + 2 * (itemH + gap) + itemH / 2;
+      const sx  = padX + itemW - 14;
+      const pulse = 1 + 0.18 * Math.sin(t * 5.5);
+      ctx.save();
+      ctx.globalAlpha = a * sp;
+      ctx.shadowColor = '#6c5ce7'; ctx.shadowBlur = 22 * pulse * sp;
+      ctx.fillStyle   = '#6c5ce7';
+      ctx.beginPath(); ctx.arc(sx, yy, 7 * pulse, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* Scene 2 — Bar chart */
+  function drawChart(t, masterAlpha) {
+    const a      = masterAlpha;
+    const padX   = W * 0.07;
+    const padYT  = H * 0.14;
+    const padYB  = H * 0.14;
+    const bottom = H - padYB;
+    const chartH = H - padYT - padYB;
+    const chartW = W * 0.60;
+    const nBars  = CH_HEIGHTS.length;
+    const barGap = chartW * 0.04;
+    const barW   = (chartW - barGap * (nBars - 1)) / nBars;
+
+    /* grid lines */
+    ctx.save();
+    ctx.globalAlpha = a * 0.12;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
+    for (let g = 1; g <= 3; g++) {
+      const gy = bottom - (chartH * g / 4);
+      ctx.beginPath(); ctx.moveTo(padX, gy); ctx.lineTo(padX + chartW, gy); ctx.stroke();
+    }
+    ctx.restore();
+
+    CH_HEIGHTS.forEach((bh, i) => {
+      const p  = easeOut((t - i * 0.18) / 0.85);
+      if (p <= 0) return;
+      const xx      = padX + i * (barW + barGap);
+      const actualH = chartH * bh * p;
+      const yy      = bottom - actualH;
+
+      ctx.save();
+      ctx.globalAlpha = a * p;
+      ctx.shadowColor = CH_COLORS[i]; ctx.shadowBlur = 22 * p;
+      ctx.fillStyle   = CH_COLORS[i];
+      roundRect(ctx, xx, yy, barW, actualH, 4); ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = a * 0.25 * p;
+      ctx.fillStyle   = '#fff';
+      roundRect(ctx, xx, yy, barW, actualH * 0.38, 4); ctx.fill();
+      ctx.restore();
+
+      /* day label */
+      ctx.save();
+      ctx.globalAlpha = a * 0.9 * p;
+      ctx.fillStyle   = '#b0b0c8';
+      ctx.font        = '600 9px Unbounded, sans-serif';
+      ctx.textAlign   = 'center';
+      ctx.fillText(CH_LABELS[i], xx + barW / 2, bottom + 14);
+      ctx.restore();
+    });
+
+    /* trend line */
+    const lp = easeOut((t - 1.6) / 1.8);
+    if (lp > 0) {
+      const pts = CH_HEIGHTS.map((bh, i) => ({
+        x: padX + i * (barW + barGap) + barW / 2,
+        y: bottom - chartH * bh
+      }));
+      const drawUpTo = (pts.length - 1) * Math.min(lp, 1);
+      ctx.save();
+      ctx.globalAlpha = a * lp;
+      ctx.shadowColor = '#a29bfe'; ctx.shadowBlur = 18 * lp;
+      ctx.strokeStyle = '#a29bfe'; ctx.lineWidth = 2;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      pts.forEach((p2, i) => {
+        if (i > drawUpTo) return;
+        i === 0 ? ctx.moveTo(p2.x, p2.y) : ctx.lineTo(p2.x, p2.y);
+      });
+      ctx.stroke();
+      const dotIdx = Math.min(Math.floor(drawUpTo), pts.length - 1);
+      const dot    = pts[dotIdx];
+      ctx.beginPath(); ctx.arc(dot.x, dot.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#a29bfe'; ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /* ─── Scene sequencer ──────────────────────────────────── */
+  const SCENES  = [drawTimeline, drawList, drawChart];
+  const SCENE_HOLD = 6200; /* ms visible before next scene */
+  const FADE_MS    = 900;
+
+  let sceneIdx    = 0;
+  let sceneStart  = performance.now();
+  let sceneT      = 0;    /* seconds since scene reset */
+  let prevScene   = -1;
+  let prevT       = 0;
+  let crossfade   = 0;    /* 0→1 transition progress */
+  let transitioning = false;
+
+  /* ─── Main render loop ─────────────────────────────────── */
+  let lastTime = performance.now();
+
+  function frame(now) {
+    const dt = Math.min(now - lastTime, 50);
+    lastTime = now;
+
+    const elapsed = now - sceneStart;
+
+    /* advance scene time only until we start fading out */
+    if (elapsed < SCENE_HOLD) {
+      sceneT += dt / 1000;
+    }
+
+    /* start transition */
+    if (!transitioning && elapsed >= SCENE_HOLD) {
+      transitioning = true;
+      prevScene = sceneIdx;
+      prevT     = sceneT;
+      sceneIdx  = (sceneIdx + 1) % SCENES.length;
+      sceneT    = 0;
+      crossfade = 0;
+    }
+    if (transitioning) {
+      crossfade += dt / FADE_MS;
+      sceneT    += dt / 1000;
+      if (crossfade >= 1) {
+        crossfade     = 1;
+        transitioning = false;
+        prevScene     = -1;
+        sceneStart    = now;
+        /* don't reset sceneT — let it keep running from where crossfade ended */
+      }
+    }
+
+    /* clear */
+    ctx.clearRect(0, 0, W, H);
+
+    /* draw outgoing scene (fading out) */
+    if (transitioning && prevScene >= 0) {
+      const outAlpha = 1 - easeOut(crossfade);
+      SCENES[prevScene](prevT, outAlpha * 1.4);
+    }
+
+    /* draw incoming / steady scene */
+    const inAlpha = transitioning ? easeOut(crossfade) : 1.0;
+    SCENES[sceneIdx](sceneT, inAlpha * 1.4);
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>

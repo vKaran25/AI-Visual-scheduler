@@ -29,7 +29,7 @@
     --red-bg:    rgba(225,112,85,.08);
     --amber:     #fdcb6e;
     --hour-h:    60px;
-    --sidebar-w: 300px;
+    --sidebar-w: 390px;
     --ai-w:      440px;
     --header-h:  46px;
     --radius:    3px;
@@ -232,20 +232,30 @@
     left: 60px;
     right: 8px;
     border-radius: var(--radius);
-    padding: 5px 10px;
+    padding: 5px 10px 5px 14px;
     overflow: hidden;
     cursor: pointer;
     transition: filter var(--trans), transform var(--trans), box-shadow var(--trans);
     display: flex;
     flex-direction: column;
     gap: 1px;
-    border: 1px solid rgba(255,255,255,.1);
+    border: 1px solid rgba(0,0,0,.15);
+    border-left: 3px solid rgba(255,255,255,.5);
     z-index: 4;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  }
+  .busy-block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 50%, rgba(0,0,0,.1) 100%);
+    pointer-events: none;
   }
   .busy-block:hover {
     filter: brightness(1.12);
     transform: translateX(2px);
-    box-shadow: -2px 0 0 0 rgba(255,255,255,.15), var(--shadow);
+    box-shadow: -2px 0 0 0 rgba(255,255,255,.25), 0 2px 8px rgba(0,0,0,.25);
   }
   .busy-block .blk-label {
     font-size: 12px;
@@ -1089,31 +1099,21 @@
   .sb-section.highlighted {
     position: relative;
     border-radius: var(--radius);
-    z-index: 10;
-  }
-  .sb-section.highlighted::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: calc(var(--radius) + 2px);
-    pointer-events: none;
-    border: 2px solid var(--accent);
-    animation: shrinkOutline 1.2s infinite alternate ease-in-out;
-    z-index: -1;
+    box-shadow: inset 0 0 0 2px rgba(108, 92, 231, 0.24);
+    background: rgba(108, 92, 231, 0.05);
+    animation: sidebarPulse 1.2s infinite alternate ease-in-out;
   }
   .sb-section.highlighted .sb-title {
     color: var(--accent);
   }
-  @keyframes shrinkOutline {
+  @keyframes sidebarPulse {
     0% {
-      inset: -6px;
-      opacity: 0;
-      border-color: rgba(108,92,231,0.2);
+      box-shadow: inset 0 0 0 2px rgba(108, 92, 231, 0.2);
+      background: rgba(108, 92, 231, 0.03);
     }
     100% {
-      inset: 0px;
-      opacity: 1;
-      border-color: var(--accent);
+      box-shadow: inset 0 0 0 2px var(--accent);
+      background: rgba(108, 92, 231, 0.08);
     }
   }
 
@@ -1575,7 +1575,7 @@
         <div id="ai-sessions-list"></div>
       </div>
       <div id="ai-chat-messages">
-        <div class="ai-msg">
+        <div id="walkthrough-card" class="ai-msg">
           <div class="ai-welcome">Welcome to AI Planner</div>
           <div class="ai-steps" id="ai-steps">
             <div class="ai-step active" data-step="busy">
@@ -1600,6 +1600,10 @@
             <button id="wt-prev-btn" class="btn-cancel" style="flex: 1; padding: 6px; width: auto;">Previous</button>
             <button id="wt-next-btn" class="btn-primary" style="flex: 1; padding: 6px; margin: 0; width: auto;">Next</button>
           </div>
+        </div>
+        <div id="walkthrough-complete-note" class="ai-msg" style="display:none;">
+          <div class="ai-welcome">Walkthrough complete</div>
+          <div class="ai-hint">You’ve already seen the planner guide. You can reopen it anytime from the AI Planner header.</div>
         </div>
       </div>
       <div id="ai-chat-input-area">
@@ -1743,6 +1747,29 @@ function formatDate(d){
 function isToday(d){
   const n=new Date(); n.setHours(0,0,0,0);
   return d.getTime()===n.getTime();
+}
+
+function formatHumanDateTime(value){
+  if(!value) return 'now';
+  const [datePart, timePart] = String(value).split('T');
+  if(!datePart || !timePart) return value;
+
+  const [year, month, day] = datePart.split('-').map(Number);
+  const parsedDate = new Date(year, month - 1, day);
+  const dateLabel = parsedDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  const [hour, minute] = timePart.split(':').map(Number);
+  const parsedTime = new Date(2000, 0, 1, hour, minute);
+  const timeLabel = parsedTime.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+
+  return `${dateLabel} • ${timeLabel}`;
 }
 
 // ── Toast ─────────────────────────────────────────────────────────
@@ -1930,8 +1957,8 @@ function renderBlocks(){
       const el = document.createElement('div');
       el.className = 'busy-block' + (slot.is_pending ? ' pending-block' : '');
       el.dataset.id = slot.id;
-      el.style.top = `${slot.startMinutes}px`;
-      el.style.height = `${heightPx(slot.endMinutes-slot.startMinutes)}px`;
+      el.style.top = `${slot.startMinutes + 1}px`;
+      el.style.height = `${Math.max(20, heightPx(slot.endMinutes-slot.startMinutes) - 3)}px`;
       el.style.background = slot.color;
       if(totalCols > 1){
         const w = (1/totalCols)*100;
@@ -2074,7 +2101,7 @@ function updateAiStartDisplay(){
   const el = document.getElementById('ai-start-display');
   if(!el) return;
   const v = getAiStartAfter();
-  el.textContent = v ? v : 'now';
+  el.textContent = formatHumanDateTime(v);
 }
 
 function setDate(d){
@@ -2766,6 +2793,7 @@ async function startNewSession() {
     }
 
     aiMessages.scrollTop = aiMessages.scrollHeight;
+    showAiGreeting(aiMessages);
     showToast('New session started', 'success');
     // Close drawer and reload sessions list
     closeSessionsDrawer();
@@ -2860,7 +2888,7 @@ const stepHints = {
   busy: 'Start by adding your busy blocks — classes, work, meetings.',
   templates: 'Apply a template to quickly set up recurring schedules.',
   freetime: 'Search for available time slots across upcoming days.',
-  plan: 'Review your AI-generated plan. Accept to confirm, or reject to try again.'
+  plan: 'Review your AI-generated plan. Use the Slack slider to add buffer time between tasks — higher slack means more breathing room.'
 };
 
 const stepToSectionIndex = {
@@ -2875,6 +2903,72 @@ function detectCurrentStep() {
   if (hasPending) return 'plan';
   if (allSlots.length === 0) return 'busy';
   return 'templates';
+}
+
+function getWalkthroughStorageKey() {
+  return currentUser?.id ? `ai-planner-walkthrough-completed:${currentUser.id}` : 'ai-planner-walkthrough-completed:guest';
+}
+
+function isWalkthroughCompleted() {
+  try {
+    return localStorage.getItem(getWalkthroughStorageKey()) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setWalkthroughCompleted(completed = true) {
+  try {
+    localStorage.setItem(getWalkthroughStorageKey(), completed ? 'true' : 'false');
+  } catch {}
+}
+
+function updateWalkthroughVisibility() {
+  const walkthroughCard = document.getElementById('walkthrough-card');
+  const completeNote = document.getElementById('walkthrough-complete-note');
+  const prompt = document.getElementById('ai-prompt');
+  const shouldShow = !isWalkthroughCompleted();
+  if (walkthroughCard) walkthroughCard.style.display = shouldShow ? 'block' : 'none';
+  if (completeNote) completeNote.style.display = 'none';
+  if (prompt) {
+    prompt.placeholder = shouldShow ? 'e.g. Set up a new GitHub repo over 2 hours...' : 'What would you like to plan?';
+  }
+}
+
+const aiGreetings = [
+  "Hey! I'm your AI planner. Tell me what you need to get done and I'll find the best time for it.",
+  "All set up! What are you working on today? I'll figure out where it fits.",
+  "Ready when you are. Drop me a task and I'll slot it into your schedule.",
+  "Let's plan something. What's on your mind?",
+  "You're all set. What would you like to schedule?",
+  "Go ahead — what do you need done? I'll find the time.",
+  "Nice, you're all caught up. What's next on the list?",
+  "I'm here to help you plan. What are we working on?"
+];
+
+function showAiGreeting(container) {
+  const msg = document.createElement('div');
+  msg.className = 'ai-msg';
+  msg.textContent = aiGreetings[Math.floor(Math.random() * aiGreetings.length)];
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function markWalkthroughCompleted() {
+  setWalkthroughCompleted(true);
+  updateWalkthroughVisibility();
+
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.querySelectorAll('.sb-section').forEach(s => s.classList.remove('highlighted'));
+  }
+
+  const messages = document.getElementById('ai-chat-messages');
+  if (!messages) return;
+  const existingPrompt = messages.querySelector('[data-walkthrough-complete]');
+  if (existingPrompt) return;
+
+  showAiGreeting(messages);
 }
 
 function updateStepIndicator(activeStep) {
@@ -2914,13 +3008,18 @@ const walkthroughOrder = ['busy', 'templates', 'freetime', 'plan'];
 function updateWalkthroughButtons() {
   const prevBtn = document.getElementById('wt-prev-btn');
   const nextBtn = document.getElementById('wt-next-btn');
-  if (prevBtn) prevBtn.disabled = currentWalkthroughIndex === 0;
-  if (nextBtn) nextBtn.disabled = currentWalkthroughIndex === walkthroughOrder.length - 1;
+  if (!prevBtn || !nextBtn) return;
+
+  prevBtn.disabled = currentWalkthroughIndex === 0;
+  nextBtn.textContent = currentWalkthroughIndex === walkthroughOrder.length - 1 ? 'Complete' : 'Next';
 }
 
 function handleWalkthroughNext() {
   if (currentWalkthroughIndex < walkthroughOrder.length - 1) {
-    navigateToStep(walkthroughOrder[currentWalkthroughIndex + 1]);
+    const nextStep = walkthroughOrder[currentWalkthroughIndex + 1];
+    navigateToStep(nextStep);
+  } else {
+    markWalkthroughCompleted();
   }
 }
 
@@ -2935,9 +3034,11 @@ document.getElementById('wt-next-btn')?.addEventListener('click', handleWalkthro
 
 function navigateToStep(activeStep) {
   currentWalkthroughIndex = Math.max(0, walkthroughOrder.indexOf(activeStep));
-  updateStepIndicator(activeStep);
-  highlightSidebarSection(activeStep);
-  updateWalkthroughButtons();
+  if (!isWalkthroughCompleted()) {
+    updateStepIndicator(activeStep);
+    highlightSidebarSection(activeStep);
+    updateWalkthroughButtons();
+  }
 }
 
 // ── Click-to-navigate from plan/gantt to timeline ─────────────────
@@ -2972,6 +3073,7 @@ function navigateToBlock(blockDate, startMinutes) {
 aiChatBtn.addEventListener('click', () => {
   aiChatPanel.classList.toggle('open');
   updateAiBtnStyle();
+  updateWalkthroughVisibility();
 });
 aiCloseBtn.addEventListener('click', () => {
   aiChatPanel.classList.remove('open');
@@ -2982,6 +3084,7 @@ aiCloseBtn.addEventListener('click', () => {
 document.getElementById('ai-history-btn').addEventListener('click', toggleSessionsDrawer);
 document.getElementById('ai-new-session-btn').addEventListener('click', startNewSession);
 
+updateWalkthroughVisibility();
 
 async function sendAiMessage() {
   const text = aiPrompt.value.trim();
@@ -3210,6 +3313,13 @@ async function startAuthenticatedApp(){
   scrollToCurrent();
   await checkGcalStatus();
   await loadSessions();          // pre-populate session history drawer
+  updateWalkthroughVisibility();
+  if (isWalkthroughCompleted()) {
+    const messages = document.getElementById('ai-chat-messages');
+    if (messages && !messages.querySelector('.ai-msg:not(#walkthrough-card):not(#walkthrough-complete-note)')) {
+      showAiGreeting(messages);
+    }
+  }
   // Auto-open AI Planner panel
   if (!aiChatPanel.classList.contains('open')) {
     aiChatPanel.classList.add('open');
