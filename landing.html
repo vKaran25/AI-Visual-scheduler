@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* ── CSS Variables ─────────────────────────────────────────────── */
   :root {
     --bg:        #0e0e10;
     --surface:   #151518;
@@ -20,23 +19,13 @@
     --accent2:   #a29bfe;
     --accent-bg: rgba(108,92,231,.08);
     --red:       #e17055;
-    --radius:    3px;
+    --green:     #00b894;
+    --blue:      #0984e3;
+    --orange:    #e17055;
+    --pink:      #d6309e;
+    --radius:    4px;
     --trans:     .15s ease;
   }
-  [data-theme="light"] {
-    --bg:       #e8e8ec;
-    --surface:  #f2f2f5;
-    --surface2: #eaeaed;
-    --border:   #c5c5d0;
-    --text:     #1a1a2e;
-    --text2:    #55556e;
-    --accent:   #5b4de0;
-    --accent2:  #7c6af0;
-    --accent-bg: rgba(91,77,224,.08);
-    --red:       #d63031;
-  }
-
-  /* ── Reset ─────────────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'DM Sans', sans-serif;
@@ -44,54 +33,100 @@
     color: var(--text);
     font-size: 14px;
     line-height: 1.5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 100vh;
+    overflow-x: hidden;
   }
   button { cursor: pointer; font-family: inherit; }
   input { font-family: inherit; }
 
-  /* ── Layout ────────────────────────────────────────────────────── */
-  .container {
+  /* ── Background animations ─────────────────────────────────────── */
+  .bg-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .bg-scene {
+    position: absolute;
+    inset: 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 32px;
-    max-width: 800px;
-    padding: 32px;
-    text-align: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 1.8s ease;
+  }
+  .bg-scene.active { opacity: 1; }
+  .bg-scene canvas { width: 100%; height: 100%; }
+
+  /* ── Content ───────────────────────────────────────────────────── */
+  .page {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    min-height: 100vh;
+    padding: 40px 60px;
   }
 
+  .hero { text-align: left; max-width: 420px; }
+  .hero-badge {
+    display: inline-block;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: var(--accent-bg);
+    border: 1px solid rgba(108,92,231,.2);
+    border-radius: 20px;
+    padding: 5px 14px;
+    margin-bottom: 20px;
+  }
   .hero-title {
     font-family: 'Unbounded', sans-serif;
-    font-size: 42px;
-    font-weight: 800;
-    color: var(--accent);
-    letter-spacing: -1px;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: -2px;
+    line-height: 1.05;
     text-transform: uppercase;
-    line-height: 1.1;
   }
+  .hero-title .accent { color: var(--accent); }
   .hero-subtitle {
-    font-size: 18px;
+    font-size: 15px;
     color: var(--text2);
-    max-width: 500px;
     margin-top: 16px;
   }
 
+  /* ── Auth card ─────────────────────────────────────────────────── */
   .auth-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 32px;
-    width: 360px;
+    border-radius: 8px;
+    padding: 28px;
+    width: 340px;
     text-align: left;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    position: relative;
+    flex-shrink: 0;
   }
-  .form-row { margin-bottom: 16px; }
-  .form-col { display: flex; flex-direction: column; gap: 6px; }
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), transparent 60%);
+    z-index: -1;
+    opacity: 0.3;
+  }
+  .form-row { margin-bottom: 14px; }
+  .form-col { display: flex; flex-direction: column; gap: 5px; }
   .form-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text2);
     letter-spacing: .5px;
@@ -103,20 +138,20 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text);
-    padding: 10px;
-    font-size: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
     width: 100%;
     transition: border-color var(--trans);
   }
   .form-input:focus {
     outline: none;
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,92,231,.15);
   }
-
   .auth-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 24px;
+    gap: 10px;
+    margin-top: 20px;
   }
   .btn-primary {
     background: var(--accent);
@@ -125,13 +160,14 @@
     border-radius: var(--radius);
     padding: 10px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     flex: 1;
-    transition: background var(--trans);
+    transition: all var(--trans);
     text-transform: uppercase;
     letter-spacing: .5px;
+    font-family: 'Unbounded', sans-serif;
   }
-  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
   .btn-secondary {
     background: var(--surface2);
     color: var(--text2);
@@ -139,57 +175,45 @@
     border-radius: var(--radius);
     padding: 10px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     flex: 1;
-    transition: background var(--trans), color var(--trans);
+    transition: all var(--trans);
     text-transform: uppercase;
     letter-spacing: .5px;
+    font-family: 'Unbounded', sans-serif;
   }
-  .btn-secondary:hover {
-    background: var(--border);
-    color: var(--text);
-  }
-
+  .btn-secondary:hover { background: var(--border); color: var(--text); }
   .error-msg {
     color: var(--red);
-    font-size: 12px;
-    margin-top: 12px;
+    font-size: 11px;
+    margin-top: 10px;
     text-align: center;
   }
-  
-  .features {
-    display: flex;
-    gap: 24px;
-    margin-top: 32px;
-    text-align: left;
-  }
-  .feature-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 24px;
-    border-radius: var(--radius);
-    flex: 1;
-  }
-  .feature-box h3 {
-    font-family: 'Unbounded', sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-  .feature-box p {
-    color: var(--text2);
-    font-size: 13px;
+
+  @media (max-width: 768px) {
+    .page {
+      flex-direction: column;
+      gap: 32px;
+      padding: 32px 24px;
+    }
+    .hero { text-align: center; max-width: 100%; }
+    .auth-card { width: 100%; max-width: 340px; }
   }
 </style>
 </head>
 <body>
 
-<div class="container" id="main-content" style="display: none;">
-  <div>
-    <div class="hero-title">Predestination</div>
-    <div class="hero-subtitle">The AI-powered visual scheduler for your day. Log in to access your blocks, memory, and personalized planner.</div>
+<div class="bg-stage">
+  <div class="bg-scene" id="scene-timeline"><canvas id="cv-timeline"></canvas></div>
+  <div class="bg-scene" id="scene-list"><canvas id="cv-list"></canvas></div>
+  <div class="bg-scene" id="scene-chart"><canvas id="cv-chart"></canvas></div>
+</div>
+
+<div class="page" id="main-content" style="display: none;">
+  <div class="hero">
+    <div class="hero-badge">AI-Powered Scheduler</div>
+    <div class="hero-title"><span class="accent">Pre</span>destination</div>
+    <div class="hero-subtitle">Your day, intelligently planned. Drop your tasks — the AI finds the perfect slots.</div>
   </div>
 
   <div class="auth-card">
@@ -211,94 +235,288 @@
     </div>
     <div id="auth-error" class="error-msg"></div>
   </div>
-  
-  <div class="features">
-    <div class="feature-box">
-      <h3>AI Planning</h3>
-      <p>Let an AI assistant organize your tasks into free slots seamlessly.</p>
-    </div>
-    <div class="feature-box">
-      <h3>GCal Sync</h3>
-      <p>Connect your Google Calendar and keep everything perfectly synced in real time.</p>
-    </div>
-    <div class="feature-box">
-      <h3>Presets</h3>
-      <p>Save recurring schedules like 'Exam Prep' or 'Fitness' and apply them instantly.</p>
-    </div>
-  </div>
 </div>
 
 <script>
+/* ── Auth ──────────────────────────────────────────────────────── */
 const authEmail = document.getElementById('auth-email');
 const authPassword = document.getElementById('auth-password');
 const authError = document.getElementById('auth-error');
 const mainContent = document.getElementById('main-content');
 
 async function checkAuth() {
-  try {
-    const r = await fetch('/api/me');
-    if (r.ok) {
-      window.location.href = '/';
-      return;
-    }
-  } catch (e) {
-    // Ignore error, proceed to show login
-  }
+  try { const r = await fetch('/api/me'); if (r.ok) { window.location.href = '/'; return; } } catch (e) {}
   mainContent.style.display = 'flex';
 }
-
 async function readApiError(response, fallback='Request failed') {
   try {
     const data = await response.json();
-    if (data.detail) {
-      if (Array.isArray(data.detail)) {
-        return data.detail[0].msg || fallback;
-      }
-      return data.detail;
-    }
+    if (data.detail) { return Array.isArray(data.detail) ? data.detail[0].msg || fallback : data.detail; }
     return data.error || fallback;
-  } catch(e) {
-    return fallback;
-  }
+  } catch(e) { return fallback; }
 }
-
 async function submitAuth(mode) {
-  const email = authEmail.value.trim();
-  const password = authPassword.value;
+  const email = authEmail.value.trim(), password = authPassword.value;
   authError.textContent = '';
-  
-  if(!email || !password){
-    authError.textContent = 'Email and password are required.';
-    return;
-  }
-  
+  if (!email || !password) { authError.textContent = 'Email and password are required.'; return; }
   try {
-    const r = await fetch(`/api/auth/${mode}`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password})
-    });
-    
-    if(!r.ok){
-      authError.textContent = await readApiError(r, 'Could not sign in.');
-      return;
-    }
-    
-    // Success, redirect to main app
+    const r = await fetch(`/api/auth/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
+    if (!r.ok) { authError.textContent = await readApiError(r, 'Could not sign in.'); return; }
     window.location.href = '/';
-  } catch(e) {
-    authError.textContent = 'Network error.';
+  } catch(e) { authError.textContent = 'Network error.'; }
+}
+document.getElementById('auth-login-btn').addEventListener('click', () => submitAuth('login'));
+document.getElementById('auth-signup-btn').addEventListener('click', () => submitAuth('signup'));
+authPassword.addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
+checkAuth();
+
+/* ── Helpers ───────────────────────────────────────────────────── */
+function dpr() { return window.devicePixelRatio || 1; }
+function sizeCanvas(cv) {
+  const r = dpr();
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width = rect.width * r;
+  cv.height = rect.height * r;
+  const ctx = cv.getContext('2d');
+  ctx.scale(r, r);
+  return { ctx, w: rect.width, h: rect.height };
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+/* ── Timeline scene ────────────────────────────────────────────── */
+let tlT = -1;
+const tlCv = document.getElementById('cv-timeline');
+const tlSize = sizeCanvas(tlCv);
+const tlCtx = tlSize.ctx, tlW = tlSize.w, tlH = tlSize.h;
+const tlBlocks = [
+  { y: 0.08, bh: 0.18, color: '#6c5ce7', delay: 0 },
+  { y: 0.32, bh: 0.14, color: '#00b894', delay: 0.5 },
+  { y: 0.52, bh: 0.22, color: '#e17055', delay: 1.0 },
+  { y: 0.80, bh: 0.12, color: '#0984e3', delay: 1.5 },
+];
+const tlLineX = tlW * 0.15, tlBlockL = tlW * 0.2, tlBlockR = tlW * 0.75;
+
+function drawTimeline() {
+  tlCtx.clearRect(0, 0, tlW, tlH);
+  const alpha = Math.min(1, tlT / 1.5);
+  const a = alpha * 0.12;
+
+  tlCtx.strokeStyle = '#fff'; tlCtx.lineWidth = 1;
+  tlCtx.globalAlpha = a;
+  tlCtx.beginPath(); tlCtx.moveTo(tlLineX, 0); tlCtx.lineTo(tlLineX, tlH); tlCtx.stroke();
+
+  tlCtx.fillStyle = '#fff'; tlCtx.font = '10px Unbounded';
+  tlCtx.globalAlpha = a * 0.6;
+  for (let i = 0; i < 5; i++) {
+    const yy = tlH * 0.05 + (tlH * 0.9) * (i / 4);
+    tlCtx.fillText((9 + i * 2) + ':00', tlLineX - 30, yy + 4);
   }
+
+  tlBlocks.forEach(b => {
+    const p = Math.max(0, Math.min(1, (tlT - b.delay) / 0.8));
+    const e = easeOut(p);
+    const bw = (tlBlockR - tlBlockL) * e;
+    const yy = tlH * b.y, bh = tlH * b.bh;
+    tlCtx.globalAlpha = a * 1.2 * e;
+    tlCtx.fillStyle = b.color;
+    roundRect(tlCtx, tlBlockL, yy, bw, bh, 4); tlCtx.fill();
+    tlCtx.globalAlpha = a * 0.6 * e;
+    tlCtx.fillStyle = '#fff';
+    roundRect(tlCtx, tlBlockL, yy, bw, bh * 0.35, 4); tlCtx.fill();
+  });
+
+  const np = Math.max(0, Math.min(1, (tlT - 2.2) / 0.6));
+  if (np > 0) {
+    const ny = tlH * 0.42;
+    tlCtx.globalAlpha = a * 1.6 * np;
+    tlCtx.strokeStyle = '#e17055'; tlCtx.lineWidth = 2;
+    tlCtx.beginPath(); tlCtx.moveTo(tlBlockL - 10, ny); tlCtx.lineTo(tlBlockR + 20, ny); tlCtx.stroke();
+    tlCtx.beginPath(); tlCtx.arc(tlBlockL - 10, ny, 4, 0, Math.PI * 2);
+    tlCtx.fillStyle = '#e17055'; tlCtx.fill();
+  }
+  tlCtx.globalAlpha = 1;
 }
 
-document.getElementById('auth-login-btn').addEventListener('click', ()=>submitAuth('login'));
-document.getElementById('auth-signup-btn').addEventListener('click', ()=>submitAuth('signup'));
-authPassword.addEventListener('keydown', e => {
-  if(e.key === 'Enter') submitAuth('login');
-});
+/* ── List scene ────────────────────────────────────────────────── */
+let lsT = -1;
+const lsCv = document.getElementById('cv-list');
+const lsSize = sizeCanvas(lsCv);
+const lsCtx = lsSize.ctx, lsW = lsSize.w, lsH = lsSize.h;
+const lsItems = [
+  { bar: 0.8, color: '#6c5ce7', done: true, delay: 0 },
+  { bar: 0.6, color: '#00b894', done: true, delay: 0.4 },
+  { bar: 0.9, color: '#e17055', done: false, delay: 0.8 },
+  { bar: 0.45, color: '#0984e3', done: false, delay: 1.2 },
+  { bar: 0.7, color: '#d6309e', done: false, delay: 1.6 },
+];
+const lsItemH = lsH * 0.11, lsGap = lsH * 0.035;
+const lsStartY = (lsH - (lsItems.length * (lsItemH + lsGap))) / 2;
+const lsPadX = lsW * 0.1;
 
-// Run auth check on load
-checkAuth();
+function drawList() {
+  lsCtx.clearRect(0, 0, lsW, lsH);
+  const alpha = Math.min(1, lsT / 1.5);
+  const a = alpha * 0.12;
+
+  lsItems.forEach((item, i) => {
+    const p = Math.max(0, Math.min(1, (lsT - item.delay) / 0.6));
+    const e = easeOut(p);
+    const yy = lsStartY + i * (lsItemH + lsGap);
+    const sx = (1 - e) * 40;
+
+    lsCtx.globalAlpha = a * 0.8 * e;
+    lsCtx.fillStyle = '#1c1c20';
+    roundRect(lsCtx, lsPadX + sx, yy, lsW - lsPadX * 2, lsItemH, 4); lsCtx.fill();
+    lsCtx.strokeStyle = '#2c2c34'; lsCtx.lineWidth = 1;
+    roundRect(lsCtx, lsPadX + sx, yy, lsW - lsPadX * 2, lsItemH, 4); lsCtx.stroke();
+
+    const cx = lsPadX + 14 + sx, cy = yy + lsItemH / 2;
+    lsCtx.strokeStyle = item.done ? '#00b894' : '#2c2c34'; lsCtx.lineWidth = 1.5;
+    lsCtx.beginPath(); lsCtx.arc(cx, cy, 6, 0, Math.PI * 2); lsCtx.stroke();
+    if (item.done) {
+      lsCtx.beginPath();
+      lsCtx.moveTo(cx - 3, cy); lsCtx.lineTo(cx - 0.5, cy + 3); lsCtx.lineTo(cx + 4, cy - 3);
+      lsCtx.stroke();
+    }
+
+    const barL = lsPadX + 30 + sx;
+    const barW = (lsW - lsPadX * 2 - 44) * item.bar * e;
+    lsCtx.fillStyle = item.color;
+    lsCtx.globalAlpha = a * e;
+    roundRect(lsCtx, barL, yy + lsItemH * 0.3, barW, lsItemH * 0.35, 3); lsCtx.fill();
+  });
+
+  const sp = Math.max(0, Math.min(1, (lsT - 2.4) / 0.6));
+  if (sp > 0) {
+    const sx = lsW - lsPadX - 22;
+    const sy = lsStartY + 2 * (lsItemH + lsGap) + lsItemH / 2;
+    const pulse = 1 + Math.sin(lsT * 5) * 0.2;
+    lsCtx.globalAlpha = a * 1.2 * sp;
+    lsCtx.fillStyle = '#6c5ce7';
+    lsCtx.beginPath(); lsCtx.arc(sx, sy, 10 * pulse, 0, Math.PI * 2); lsCtx.fill();
+  }
+  lsCtx.globalAlpha = 1;
+}
+
+/* ── Chart scene ───────────────────────────────────────────────── */
+let chT = -1;
+const chCv = document.getElementById('cv-chart');
+const chSize = sizeCanvas(chCv);
+const chCtx = chSize.ctx, chW = chSize.w, chH = chSize.h;
+const chBarH = [0.55, 0.75, 0.4, 0.9, 0.6, 0.8, 0.45];
+const chColors = ['#6c5ce7', '#00b894', '#0984e3', '#e17055', '#d6309e', '#a29bfe', '#00b894'];
+const chLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const chPadX = chW * 0.1, chPadY = chH * 0.15;
+const chBarGap = chW * 0.02;
+const chBarW = (chW - chPadX * 2 - chBarGap * 6) / 7;
+const chBottom = chH - chPadY, chHt = chH - chPadY * 2;
+
+function drawChart() {
+  chCtx.clearRect(0, 0, chW, chH);
+  const alpha = Math.min(1, chT / 1.5);
+  const a = alpha * 0.12;
+
+  chBarH.forEach((bh, i) => {
+    const p = Math.max(0, Math.min(1, (chT - i * 0.2) / 0.8));
+    const e = easeOut(p);
+    const xx = chPadX + i * (chBarW + chBarGap);
+    const actualH = chHt * bh * e;
+    const yy = chBottom - actualH;
+
+    chCtx.fillStyle = chColors[i];
+    chCtx.globalAlpha = a * e;
+    roundRect(chCtx, xx, yy, chBarW, actualH, 3); chCtx.fill();
+    chCtx.fillStyle = '#fff';
+    chCtx.globalAlpha = a * 0.3 * e;
+    roundRect(chCtx, xx, yy, chBarW, actualH * 0.4, 3); chCtx.fill();
+
+    chCtx.fillStyle = '#8a8aa0';
+    chCtx.globalAlpha = a * 0.6 * e;
+    chCtx.font = '9px Unbounded';
+    chCtx.textAlign = 'center';
+    chCtx.fillText(chLabels[i], xx + chBarW / 2, chBottom + 14);
+  });
+
+  const lp = Math.max(0, Math.min(1, (chT - 1.5) / 1.8));
+  if (lp > 0) {
+    chCtx.beginPath();
+    chCtx.strokeStyle = '#a29bfe'; chCtx.lineWidth = 2;
+    chCtx.globalAlpha = a * 1.5 * lp;
+    const pts = chBarH.map((bh, i) => ({
+      x: chPadX + i * (chBarW + chBarGap) + chBarW / 2,
+      y: chBottom - chHt * bh
+    }));
+    const drawLen = Math.floor(pts.length * lp);
+    for (let i = 0; i <= drawLen && i < pts.length; i++) {
+      if (i === 0) chCtx.moveTo(pts[i].x, pts[i].y);
+      else chCtx.lineTo(pts[i].x, pts[i].y);
+    }
+    chCtx.stroke();
+    if (drawLen < pts.length) {
+      const dot = pts[Math.min(drawLen, pts.length - 1)];
+      chCtx.beginPath(); chCtx.arc(dot.x, dot.y, 3, 0, Math.PI * 2);
+      chCtx.fillStyle = '#a29bfe'; chCtx.fill();
+    }
+  }
+  chCtx.globalAlpha = 1;
+}
+
+/* ── Scene sequencer ───────────────────────────────────────────── */
+const sceneEls = [
+  document.getElementById('scene-timeline'),
+  document.getElementById('scene-list'),
+  document.getElementById('scene-chart'),
+];
+const sceneResets = [() => { tlT = 0; }, () => { lsT = 0; }, () => { chT = 0; }];
+const sceneDraws = [drawTimeline, drawList, drawChart];
+let activeScene = 0;
+const SCENE_MS = 6500;
+const FADE_MS = 1800;
+
+function activateScene(idx) {
+  activeScene = idx;
+  sceneEls.forEach((el, i) => el.classList.toggle('active', i === idx));
+  sceneResets[idx]();
+}
+
+let sceneIdx = 0;
+function cycleScenes() {
+  activateScene(sceneIdx);
+  sceneIdx = (sceneIdx + 1) % sceneEls.length;
+  setTimeout(cycleScenes, SCENE_MS);
+}
+cycleScenes();
+
+/* ── Master render loop ────────────────────────────────────────── */
+function renderLoop() {
+  sceneDraws.forEach((draw, i) => {
+    if (i === activeScene) {
+      draw();
+    }
+  });
+  requestAnimationFrame(renderLoop);
+}
+renderLoop();
+
+/* Advance time for active scene only */
+setInterval(() => {
+  if (tlT >= 0 && activeScene === 0) tlT += 0.032;
+  if (lsT >= 0 && activeScene === 1) lsT += 0.032;
+  if (chT >= 0 && activeScene === 2) chT += 0.032;
+}, 32);
 </script>
 </body>
 </html>
