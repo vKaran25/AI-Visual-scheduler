@@ -28,8 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 ROOT_DIR = Path(__file__).resolve().parents[1]
-INDEX_PATH = ROOT_DIR / "index.html"
-LANDING_PATH = ROOT_DIR / "landing.html"
+INDEX_PATH = ROOT_DIR / "frontend" / "index.html"
+LANDING_PATH = ROOT_DIR / "frontend" / "landing.html"
 
 
 @app.exception_handler(HTTPException)
