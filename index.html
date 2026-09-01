@@ -1411,6 +1411,10 @@
     margin-left: 4px;
   }
 </style>
+
+<script>
+  window.API_BASE_URL = "https://predestination.onrender.com";
+</script>
 </head>
 <body>
 
@@ -1797,7 +1801,7 @@ async function readApiError(response, fallback='Request failed'){
 
 async function checkAuth(){
   try {
-    const r = await fetch('/api/me');
+    const r = await fetch(window.API_BASE_URL + '/api/me');
     if(!r.ok){
       window.location.href = '/home';
       return false;
@@ -1811,7 +1815,7 @@ async function checkAuth(){
   }
 }
 logoutBtn.addEventListener('click', async ()=>{
-  await fetch('/api/auth/logout', {method:'POST'});
+  await fetch(window.API_BASE_URL + '/api/auth/logout', {method:'POST'});
   window.location.href = '/home';
 });
 
@@ -1872,7 +1876,7 @@ function executePendingHighlight() {
 
 async function fetchSlots(){
   try {
-    const r = await fetch(`/api/slots?date=${dateStr(currentDate)}`);
+    const r = await fetch(window.API_BASE_URL + `/api/slots?date=${dateStr(currentDate)}`);
     if(r.status === 401){ window.location.href = '/home'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Failed to load slots'), 'error'); return; }
     const data = await r.json();
@@ -1887,7 +1891,7 @@ async function fetchSlots(){
 
 async function loadPresets(){
   try {
-    const r = await fetch('/api/presets');
+    const r = await fetch(window.API_BASE_URL + '/api/presets');
     if(r.status === 401){ window.location.href = '/home'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not load presets'), 'error'); return; }
     presets = await r.json();
@@ -1921,7 +1925,7 @@ presetApplyBtn.addEventListener('click', async ()=>{
   const preset = presets.find(item=>item.id === presetId);
   const clearExisting = window.confirm(`Apply "${preset ? preset.name : 'preset'}"? Choose OK to replace existing non-Google blocks, or Cancel to add only if there is no overlap.`);
   try {
-    const r = await fetch(`/api/presets/${encodeURIComponent(presetId)}/apply`, {
+    const r = await fetch(window.API_BASE_URL + `/api/presets/${encodeURIComponent(presetId)}/apply`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({clear_existing: clearExisting})
@@ -2237,9 +2241,9 @@ modalSave.addEventListener('click', async ()=>{
   try {
     let r;
     if(editingSlotId!=null){
-      r = await fetch(`/api/slots/${editingSlotId}`,{ method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      r = await fetch(window.API_BASE_URL + `/api/slots/${editingSlotId}`,{ method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     } else {
-      r = await fetch('/api/slots',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      r = await fetch(window.API_BASE_URL + '/api/slots',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     }
     if(r.status === 401){ window.location.href = '/home'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
@@ -2258,7 +2262,7 @@ modalDelete.addEventListener('click', async ()=>{
 
 async function deleteSlot(id){
   try {
-    const r = await fetch(`/api/slots/${id}`,{method:'DELETE'});
+    const r = await fetch(window.API_BASE_URL + `/api/slots/${id}`,{method:'DELETE'});
     if(r.status === 401){ window.location.href = '/home'; return; }
     if(r.ok){ showToast('Block deleted','info'); await fetchSlots(); }
     else { showToast('Delete failed','error'); }
@@ -2292,7 +2296,7 @@ document.getElementById('b-add-btn').addEventListener('click', async () => {
   }
   
   try {
-    const r = await fetch('/api/slots', {
+    const r = await fetch(window.API_BASE_URL + '/api/slots', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ start, end, label, color, repeatDays, date: repeatDays.length ? null : dateStr(currentDate) })
@@ -2325,7 +2329,7 @@ document.getElementById('b-save-template-btn').addEventListener('click', async (
   if (!templateName) return;
   
   try {
-    const r = await fetch('/api/custom-presets', {
+    const r = await fetch(window.API_BASE_URL + '/api/custom-presets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2348,7 +2352,7 @@ presetRemoveBtn.addEventListener('click', async () => {
   if (!confirm('Remove all blocks from this template?')) return;
   
   try {
-    const r = await fetch(`/api/presets/${encodeURIComponent(presetId)}/remove`, { method: 'DELETE' });
+    const r = await fetch(window.API_BASE_URL + `/api/presets/${encodeURIComponent(presetId)}/remove`, { method: 'DELETE' });
     if (r.status === 401) { window.location.href = '/home'; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Remove failed'), 'error'); return; }
     const data = await r.json();
@@ -2374,7 +2378,7 @@ document.getElementById('free-search-btn').addEventListener('click', async ()=>{
   btn.disabled = true; btn.textContent = 'Searching…';
 
   try {
-    const r = await fetch(`/api/free?start_dt=${encodeURIComponent(startDt)}&hours=${hours}`);
+    const r = await fetch(window.API_BASE_URL + `/api/free?start_dt=${encodeURIComponent(startDt)}&hours=${hours}`);
     if(r.status === 401){ window.location.href = '/home'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Search failed'), 'error'); return; }
     const data = await r.json();
@@ -2705,7 +2709,7 @@ async function loadSessions() {
   if (!list) return;
   list.innerHTML = '<div class="sessions-empty">Loading...</div>';
   try {
-    const r = await fetch('/api/agent/sessions');
+    const r = await fetch(window.API_BASE_URL + '/api/agent/sessions');
     if (!r.ok) { list.innerHTML = '<div class="sessions-empty">Failed to load</div>'; return; }
     const sessions = await r.json();
     if (!sessions.length) {
@@ -2763,7 +2767,7 @@ async function startNewSession() {
   const btn = document.getElementById('ai-new-session-btn');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
-    const r = await fetch('/api/agent/new-session', { method: 'POST' });
+    const r = await fetch(window.API_BASE_URL + '/api/agent/new-session', { method: 'POST' });
     if (r.status === 401) { window.location.href = '/home'; return; }
     if (!r.ok) { showToast('Could not start new session', 'error'); return; }
     const data = await r.json();
@@ -3118,7 +3122,7 @@ async function sendAiMessage() {
       start_after: startAfter || null,
       session_id: currentSessionId || null
     };
-    const res = await fetch('/api/chat', {
+    const res = await fetch(window.API_BASE_URL + '/api/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
@@ -3185,7 +3189,7 @@ window.acceptAiEvents = async function(sessionId, containerId) {
     if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">Accepting & Syncing...</span>';
     
     try {
-        const r = await fetch('/api/chat/accept', {
+        const r = await fetch(window.API_BASE_URL + '/api/chat/accept', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
@@ -3207,7 +3211,7 @@ window.rejectAiEvents = async function(sessionId, containerId) {
     if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">Rejecting...</span>';
     
     try {
-        const r = await fetch('/api/chat/reject', {
+        const r = await fetch(window.API_BASE_URL + '/api/chat/reject', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
@@ -3229,7 +3233,7 @@ async function acceptAllPending() {
   const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
   for (const sid of pendingSessionIds) {
     try {
-      await fetch('/api/chat/accept', {
+      await fetch(window.API_BASE_URL + '/api/chat/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sid })
@@ -3244,7 +3248,7 @@ async function rejectAllPending() {
   const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
   for (const sid of pendingSessionIds) {
     try {
-      await fetch('/api/chat/reject', {
+      await fetch(window.API_BASE_URL + '/api/chat/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sid })
@@ -3268,7 +3272,7 @@ const gcalConnBtn = document.getElementById('gcal-conn-btn');
 
 async function checkGcalStatus() {
   try {
-    const res = await fetch('/api/google/status');
+    const res = await fetch(window.API_BASE_URL + '/api/google/status');
     if(res.status === 401){ window.location.href = '/home'; return; }
     if(!res.ok) return;
     const data = await res.json();
@@ -3278,7 +3282,7 @@ async function checkGcalStatus() {
       gcalConnBtn.style.color = 'var(--red)';
       gcalConnBtn.style.borderColor = 'rgba(255,92,122,.3)';
       gcalConnBtn.onclick = async () => {
-        const logoutRes = await fetch('/api/google/oauth/logout', {method: 'POST'});
+        const logoutRes = await fetch(window.API_BASE_URL + '/api/google/oauth/logout', {method: 'POST'});
         if(logoutRes.status === 401){ window.location.href = '/home'; return; }
         checkGcalStatus();
         fetchSlots();
@@ -3291,7 +3295,7 @@ async function checkGcalStatus() {
       gcalConnBtn.onclick = () => {
          window.open('/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
          const poll = setInterval(async () => {
-           const res = await fetch('/api/google/status');
+           const res = await fetch(window.API_BASE_URL + '/api/google/status');
            if(res.status === 401){ clearInterval(poll); window.location.href = '/home'; return; }
            if(!res.ok) return;
            const pollingData = await res.json();
