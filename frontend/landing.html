@@ -272,7 +272,7 @@ const authError    = document.getElementById('auth-error');
 const mainContent  = document.getElementById('main-content');
 
 async function checkAuth() {
-  try { const r = await fetch(window.API_BASE_URL + '/api/me'); if (r.ok) { window.location.href = '/'; return; } } catch (e) {}
+  try { const r = await fetch(window.API_BASE_URL + '/api/me'); if (r.ok) { window.location.href = 'index.html'; return; } } catch (e) {}
   mainContent.style.display = 'flex';
 }
 async function readApiError(response, fallback='Request failed') {
@@ -289,7 +289,7 @@ async function submitAuth(mode) {
   try {
     const r = await fetch(window.API_BASE_URL + `/api/auth/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
     if (!r.ok) { authError.textContent = await readApiError(r, 'Could not sign in.'); return; }
-    window.location.href = '/';
+    window.location.href = 'index.html';
   } catch(e) { authError.textContent = 'Network error.'; }
 }
 document.getElementById('auth-login-btn').addEventListener('click', () => submitAuth('login'));

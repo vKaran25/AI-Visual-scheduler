@@ -1803,20 +1803,20 @@ async function checkAuth(){
   try {
     const r = await fetch(window.API_BASE_URL + '/api/me');
     if(!r.ok){
-      window.location.href = '/home';
+      window.location.href = 'landing.html';
       return false;
     }
     currentUser = await r.json();
     userEmail.textContent = currentUser.email;
     return true;
   } catch(e) {
-    window.location.href = '/home';
+    window.location.href = 'landing.html';
     return false;
   }
 }
 logoutBtn.addEventListener('click', async ()=>{
   await fetch(window.API_BASE_URL + '/api/auth/logout', {method:'POST'});
-  window.location.href = '/home';
+  window.location.href = 'landing.html';
 });
 
 function buildGrid(){
@@ -1877,7 +1877,7 @@ function executePendingHighlight() {
 async function fetchSlots(){
   try {
     const r = await fetch(window.API_BASE_URL + `/api/slots?date=${dateStr(currentDate)}`);
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Failed to load slots'), 'error'); return; }
     const data = await r.json();
     allSlots = data;
@@ -1892,7 +1892,7 @@ async function fetchSlots(){
 async function loadPresets(){
   try {
     const r = await fetch(window.API_BASE_URL + '/api/presets');
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not load presets'), 'error'); return; }
     presets = await r.json();
     presetSelect.innerHTML = '';
@@ -1930,7 +1930,7 @@ presetApplyBtn.addEventListener('click', async ()=>{
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({clear_existing: clearExisting})
     });
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not apply preset'), 'error'); return; }
     showToast('Preset applied', 'success');
     await fetchSlots();
@@ -2245,7 +2245,7 @@ modalSave.addEventListener('click', async ()=>{
     } else {
       r = await fetch(window.API_BASE_URL + '/api/slots',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     }
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
     closeModal();
     showToast(editingSlotId!=null ? 'Block updated' : 'Block added','success');
@@ -2263,7 +2263,7 @@ modalDelete.addEventListener('click', async ()=>{
 async function deleteSlot(id){
   try {
     const r = await fetch(window.API_BASE_URL + `/api/slots/${id}`,{method:'DELETE'});
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(r.ok){ showToast('Block deleted','info'); await fetchSlots(); }
     else { showToast('Delete failed','error'); }
   } catch(e){ showToast('Network error','error'); }
@@ -2301,7 +2301,7 @@ document.getElementById('b-add-btn').addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ start, end, label, color, repeatDays, date: repeatDays.length ? null : dateStr(currentDate) })
     });
-    if (r.status === 401) { window.location.href = '/home'; return; }
+    if (r.status === 401) { window.location.href = 'landing.html'; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
     showToast('Block added', 'success');
     document.getElementById('b-label').value = '';
@@ -2338,7 +2338,7 @@ document.getElementById('b-save-template-btn').addEventListener('click', async (
         blocks: [{ label, start, end, color, repeatDays }]
       })
     });
-    if (r.status === 401) { window.location.href = '/home'; return; }
+    if (r.status === 401) { window.location.href = 'landing.html'; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
     showToast('Template saved', 'success');
     await loadPresets();
@@ -2353,7 +2353,7 @@ presetRemoveBtn.addEventListener('click', async () => {
   
   try {
     const r = await fetch(window.API_BASE_URL + `/api/presets/${encodeURIComponent(presetId)}/remove`, { method: 'DELETE' });
-    if (r.status === 401) { window.location.href = '/home'; return; }
+    if (r.status === 401) { window.location.href = 'landing.html'; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Remove failed'), 'error'); return; }
     const data = await r.json();
     showToast(`Removed ${data.removed} block(s)`, 'info');
@@ -2379,7 +2379,7 @@ document.getElementById('free-search-btn').addEventListener('click', async ()=>{
 
   try {
     const r = await fetch(window.API_BASE_URL + `/api/free?start_dt=${encodeURIComponent(startDt)}&hours=${hours}`);
-    if(r.status === 401){ window.location.href = '/home'; return; }
+    if(r.status === 401){ window.location.href = 'landing.html'; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Search failed'), 'error'); return; }
     const data = await r.json();
     freeResults = data;
@@ -2768,7 +2768,7 @@ async function startNewSession() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const r = await fetch(window.API_BASE_URL + '/api/agent/new-session', { method: 'POST' });
-    if (r.status === 401) { window.location.href = '/home'; return; }
+    if (r.status === 401) { window.location.href = 'landing.html'; return; }
     if (!r.ok) { showToast('Could not start new session', 'error'); return; }
     const data = await r.json();
     currentSessionId = data.session_id;
@@ -3127,7 +3127,7 @@ async function sendAiMessage() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
-    if(res.status === 401){ loadingMsg.remove(); window.location.href = '/home'; return; }
+    if(res.status === 401){ loadingMsg.remove(); window.location.href = 'landing.html'; return; }
     const data = await res.json();
     loadingMsg.remove();
     
@@ -3194,7 +3194,7 @@ window.acceptAiEvents = async function(sessionId, containerId) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
         });
-        if(r.status === 401){ window.location.href = '/home'; return; }
+        if(r.status === 401){ window.location.href = 'landing.html'; return; }
         if (r.ok) {
             if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">Accepted and saved</span>';
             fetchSlots();
@@ -3216,7 +3216,7 @@ window.rejectAiEvents = async function(sessionId, containerId) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({session_id: sessionId})
         });
-        if(r.status === 401){ window.location.href = '/home'; return; }
+        if(r.status === 401){ window.location.href = 'landing.html'; return; }
         if (r.ok) {
             if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">Rejected and removed</span>';
             fetchSlots();
@@ -3273,7 +3273,7 @@ const gcalConnBtn = document.getElementById('gcal-conn-btn');
 async function checkGcalStatus() {
   try {
     const res = await fetch(window.API_BASE_URL + '/api/google/status');
-    if(res.status === 401){ window.location.href = '/home'; return; }
+    if(res.status === 401){ window.location.href = 'landing.html'; return; }
     if(!res.ok) return;
     const data = await res.json();
     if(data.connected) {
@@ -3283,7 +3283,7 @@ async function checkGcalStatus() {
       gcalConnBtn.style.borderColor = 'rgba(255,92,122,.3)';
       gcalConnBtn.onclick = async () => {
         const logoutRes = await fetch(window.API_BASE_URL + '/api/google/oauth/logout', {method: 'POST'});
-        if(logoutRes.status === 401){ window.location.href = '/home'; return; }
+        if(logoutRes.status === 401){ window.location.href = 'landing.html'; return; }
         checkGcalStatus();
         fetchSlots();
       };
@@ -3296,7 +3296,7 @@ async function checkGcalStatus() {
          window.open('/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
          const poll = setInterval(async () => {
            const res = await fetch(window.API_BASE_URL + '/api/google/status');
-           if(res.status === 401){ clearInterval(poll); window.location.href = '/home'; return; }
+           if(res.status === 401){ clearInterval(poll); window.location.href = 'landing.html'; return; }
            if(!res.ok) return;
            const pollingData = await res.json();
            if(pollingData.connected) {
