@@ -1,6 +1,7 @@
 services:
   - type: web
     name: predestination
+    plan: free
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
