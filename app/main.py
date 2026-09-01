@@ -22,7 +22,7 @@ app = FastAPI(title="Predestination - AI Visual Scheduler", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://ai-visual-scheduler-production.up.railway.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
