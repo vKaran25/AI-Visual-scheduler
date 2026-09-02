@@ -39,7 +39,13 @@ def set_auth_cookie(response: Response, token: str) -> None:
 
 
 def clear_auth_cookie(response: Response) -> None:
-    response.delete_cookie(AUTH_COOKIE)
+    response.delete_cookie(
+        AUTH_COOKIE,
+        httponly=True,
+        samesite="none",
+        secure=True,
+        path="/",
+    )
 
 
 def get_user_by_email(session: Session, email: str) -> User | None:
