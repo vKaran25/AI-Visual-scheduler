@@ -1,8 +1,8 @@
 # Predestination - AI Visual Scheduler
 
-Predestination is a FastAPI visual scheduler with user accounts, database-backed blocks, reusable presets, Google Calendar sync, and a pure-Python agent layer for creating pending study plans with NVIDIA NIM.
+Predestination is a FastAPI visual scheduler with user accounts, database-backed blocks, reusable presets, Google Calendar sync, and a pure-Python multi-agent layer for creating pending study plans powered by **NVIDIA NIM** with automatic **Groq** LLM fallback.
 
-The project is intentionally educational: agents are plain Python classes, scheduler tools are normal functions, and all user data is scoped by `user_id`.
+The project is intentionally educational: agents are plain Python classes, scheduler tools are normal functions, and all user data is strictly scoped by `user_id`.
 
 ## Quick Start
 
@@ -15,7 +15,7 @@ cp .env.example .env
 python app.py
 ```
 
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000` for the Planner app, or `http://127.0.0.1:8000/home` for the animated landing page.
 
 ## Environment
 
@@ -24,15 +24,23 @@ Required for local auth/database:
 ```env
 DATABASE_URL=sqlite:///./data/scheduler.db
 JWT_SECRET_KEY=change_me_to_a_long_random_secret
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+COOKIE_SECURE=false
 APP_BASE_URL=http://127.0.0.1:8000
 ```
 
-Required for agents:
+Required for agents (Dual-Provider with Groq Fallback):
 
 ```env
-NVIDIA_API_KEY=your_key
+# Primary LLM: NVIDIA NIM
+NVIDIA_API_KEY=your_nvidia_key
 NVIDIA_NIM_MODEL=openai/gpt-oss-120b
 NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1
+
+# Fallback LLM: Groq (auto-triggered if NVIDIA NIM fails)
+GROQ_API_KEY=your_groq_key
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_BASE_URL=https://api.groq.com/openai/v1
 ```
 
 Required for Google Calendar:
@@ -41,111 +49,159 @@ Required for Google Calendar:
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_OAUTH_REDIRECT_URI=
+GOOGLE_TOKEN_DIR=
+GOOGLE_MANAGED_CALENDAR_NAME=Predestination
 ```
 
 ## Main Features
 
-- Email/password signup and login with HttpOnly auth cookies.
-- User-owned schedule blocks stored in SQLite locally.
-- One block per time slot, with overlap checks for manual blocks, presets, and pending agent blocks.
-- Free-time search that ignores gaps shorter than 30 minutes.
-- Built-in presets: Blank, Student, Exam Prep, Working Professional, and Fitness + Study.
-- Custom presets saved permanently in the database.
-- Lightweight Web Knowledge Agent that automatically searches DuckDuckGo, scrapes content, and summarizes web results in pure Python for dynamic knowledge injection.
-- Pure-Python NVIDIA NIM agent flow that creates pending blocks first, then commits only after confirmation.
-- Persistent agent sessions with conversation history carried across follow-up messages.
-- Long-term user memory: facts extracted from conversations are saved and reused across sessions.
-- Google Calendar two-way sync: reads events from primary calendar and writes confirmed plans to a managed "Predestination Plans" calendar.
-- Basic eval-run storage for future workflow evaluation.
+### Core Scheduling & Calendar
+- **User Authentication**: Email/password signup and login with secure HttpOnly auth cookies.
+- **Database-Backed Schedule Blocks**: User-owned slots stored locally in SQLite or in production PostgreSQL (`psycopg2-binary`).
+- **Conflict Prevention**: Overlap detection across manual blocks, presets, and pending agent blocks.
+- **Free-Time Search**: Automatic gap finder snapping to 30-minute intervals and ignoring unfeasible fragments.
+- **Calendar Presets**: Built-in templates (Blank, Student, Exam Prep, Working Professional, Fitness + Study) and persistent custom presets.
+- **Preset Bulk Removal**: One-click cleanup route to purge all blocks created by a specific preset.
+- **Google Calendar Two-Way Sync**: Syncs events from primary Google Calendar and writes confirmed plans to a dedicated "Predestination" calendar.
+
+### Agent Architecture & Reliability
+- **Dual LLM Provider with Auto-Fallback**: Primary inference on NVIDIA NIM (`openai/gpt-oss-120b`) with seamless, automatic failover to Groq (`llama-3.3-70b-versatile`).
+- **Scoped Dual-Memory System**:
+  - `pref` (Permanent Preferences): User habits (wake time, session lengths, unavailable days) stored globally and reused across all sessions.
+  - `fact` (Session-Scoped Facts): Specific study targets, deadlines, and task constraints isolated to the current planning session so plans never cross-contaminate.
+- **Dynamic 14-Day Calendar Snapshots**: Fresh snapshot of confirmed calendar blocks injected into new agent sessions so the assistant is aware of existing commitments.
+- **Web Knowledge Injection**: Pure-Python DuckDuckGo search, URL scraping, and content summarization for time-management context and domain tips.
+- **Interactive Multi-Session Management**: Auto-names sessions from user prompts, logs start/finish timestamps (`last_accessed_at`, `finished_at`), and supports multi-session history switching.
+- **Buffer / Slack Factor**: Configurable `slack` parameter (e.g. 10–20% buffer) to pad estimated study durations realistically.
+
+### Modern Frontend & UX
+- **Interactive 3D Landing Page** (`/home`): Modern welcome experience with perspective 3D canvas animation, dynamic schedule previews, and auth modal.
+- **Guided Planner Workflow**: Step indicators walking users through Step 1 (Base schedule), Step 2 (Study goal), and Step 3 (Review & commit).
+- **Click-to-Navigate**: Clicking scheduled review blocks jumps directly to that date on the calendar with smooth highlighting.
+- **Bulk Pending Actions**: Single-click approve or reject for all pending blocks generated by an agent plan.
+- **Day Summary Stats**: Live day-by-day calculation of total scheduled hours and minutes.
+- **Enhanced Visuals**: Redesigned busy blocks, hover effects, 390px expandable sidebar, and theme switcher (Dark/Light).
 
 ## Agent Architecture
 
-The agent pipeline uses **2 LLM calls per message** (down from 3 after merging fact extraction with intent classification):
+The agent pipeline executes in **2 LLM calls per message** (optimized by combining fact extraction with intent classification):
 
 ```text
 User message
   │
   ▼
 TriageAgent (1 LLM call)
-  ├─ extracts new facts from the message
+  ├─ extracts new global preferences ("prefs") & session facts ("facts")
   └─ classifies intent: plan / clarify / chat
   │
   ▼
 Response agent (1 LLM call)
-  ├─ ChatAgent     → brief scheduling-focused reply (injects Web Knowledge via search/scrape/summarize pipeline if needed)
+  ├─ ChatAgent     → brief scheduling-focused reply (with DuckDuckGo Web Knowledge search/scrape/summarize)
   ├─ ClarifyAgent  → polite follow-up questions (never re-asks answered questions)
-  └─ PlannerAgent  → structured JSON roadmap
+  └─ PlannerAgent  → structured JSON roadmap respecting duration & constraints
         │
-        ▼ (pure Python, no LLM)
-      SchedulerAgent → fits tasks into free time slots
-      ConflictAgent  → detects overlaps
-      ReviewAgent    → builds summary for the user
+        ▼ (pure Python, deterministic)
+      SchedulerAgent → fits tasks into free calendar slots (with optional slack factor)
+      ConflictAgent  → detects overlaps against existing blocks
+      ReviewAgent    → compiles day-by-day roadmap summary for user review
 ```
 
-When the user confirms a plan:
-
-- Pending blocks are committed to the database.
-- If Google Calendar is connected, each block is pushed to the "Predestination Plans" calendar.
+* **LLM Resilience**: If the NVIDIA NIM call fails or encounters network/rate limits, the request automatically falls back to Groq LLaMA 3.3 70B without disrupting the user flow.
+* **Review & Confirmation**: Blocks generated by the agent are staged as `is_pending=True`. The user can inspect them visually, review daily totals, and either confirm (committing to DB and Google Calendar) or reject (discarding pending blocks).
 
 ## Project Structure
 
 ```text
 app/
-  api/        FastAPI routes for auth, scheduler, presets, memory, agents, Google, evals
-  agents/     Agent orchestration (TriageAgent, ChatAgent, ClarifyAgent, PlannerAgent, etc.)
-  core/       Settings loaded from environment variables
-  db/         SQLModel database engine and tables
-  schemas/    Pydantic request/response models
-  services/   Scheduler, auth, preset, memory, LLM, calendar, eval logic
-tests/        API and service tests
-index.html    Single-page frontend with dark/light theme
-app.py        Local dev runner
+  agent/        Web Knowledge agent (DuckDuckGo search, web scraper, chunk summarizer, orchestrator)
+  agents/       Multi-step roadmap pipeline (TriageAgent, ChatAgent, ClarifyAgent, PlannerAgent, etc.)
+  api/          FastAPI route endpoints (auth, scheduler, presets, memory, agents, google, evals)
+  core/         App settings and environment configuration
+  db/           SQLModel database engine, tables, and auto-migration runner
+  schemas/      Pydantic request/response models
+  services/     LLM client (NIM + Groq), memory, scheduler, auth, presets, calendar, evals
+frontend/
+  index.html    Single-page visual scheduler application with guided UX and dark/light mode
+  landing.html  Welcome landing page with 3D canvas perspective animation and auth modal
+tests/          API and service unit tests (isolated SQLite & mocked LLM)
+app.py          Local development runner
+render.yaml     Render deployment blueprint (FastAPI backend on free tier)
+netlify.toml    Netlify deployment configuration (Frontend static hosting + SPA rewrites)
 ```
 
 ## API Surface
 
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `POST /api/auth/logout`
-- `GET /api/me`
-- `GET /api/settings/default-blocks`
-- `PUT /api/settings/default-blocks`
-- `GET /api/slots`
-- `POST /api/slots`
-- `PUT /api/slots/{slot_id}`
-- `DELETE /api/slots/{slot_id}`
-- `GET /api/free`
-- `GET /api/presets`
-- `POST /api/presets/{preset_id}/apply`
-- `POST /api/custom-presets`
-- `PUT /api/custom-presets/{preset_id}`
-- `DELETE /api/custom-presets/{preset_id}`
-- `POST /api/agent/chat`
-- `POST /api/agent/confirm`
-- `POST /api/agent/reject`
-- `POST /api/agent/new-session`
-- `GET /api/agent/sessions`
-- `GET /api/memory`
-- `POST /api/memory`
-- `DELETE /api/memory/{memory_id}`
-- `GET /api/google/status`
-- `GET /api/google/oauth/login`
-- `GET /api/google/oauth/callback`
-- `POST /api/google/oauth/logout`
+### App & General
+- `GET /health` — Service health check
+- `GET /` — Serves the visual scheduler application (`frontend/index.html`)
+- `GET /home` — Serves the welcome landing page (`frontend/landing.html`)
+
+### Authentication (`/api/auth`)
+- `POST /api/auth/signup` — Create user account
+- `POST /api/auth/login` — Authenticate and set HttpOnly session cookie
+- `POST /api/auth/logout` — Invalidate session and clear auth cookie
+- `GET /api/me` — Current authenticated user profile
+
+### Scheduler & Blocks (`/api`)
+- `GET /api/slots` — Get scheduled blocks for a given date
+- `POST /api/slots` — Create a new schedule block
+- `PUT /api/slots/{slot_id}` — Update an existing block
+- `DELETE /api/slots/{slot_id}` — Delete a schedule block
+- `GET /api/free` — Find free time blocks from a start timestamp
+
+### Presets (`/api`)
+- `GET /api/presets` — List built-in and user custom presets
+- `POST /api/presets/{preset_id}/apply` — Apply a preset to the schedule
+- `DELETE /api/presets/{preset_id}/remove` — Remove all blocks associated with a preset
+- `POST /api/custom-presets` — Create a custom preset
+- `PUT /api/custom-presets/{preset_id}` — Update a custom preset
+- `DELETE /api/custom-presets/{preset_id}` — Delete a custom preset
+
+### AI Agents & Sessions (`/api/agent`)
+- `POST /api/agent/chat` — Send a prompt to the agent pipeline (supports `start_after`, `slack`, `session_id`)
+- `POST /api/agent/confirm` — Commit pending plan blocks to permanent schedule
+- `POST /api/agent/reject` — Discard pending plan blocks
+- `POST /api/agent/new-session` — Create a fresh planning session with a 14-day calendar snapshot
+- `GET /api/agent/sessions` — List user's historical planning sessions with timestamps and status
+
+### Memory Management (`/api/memory`)
+- `GET /api/memory` — List all user memories
+- `POST /api/memory` — Manually create a user memory
+- `DELETE /api/memory/{memory_id}` — Delete a specific memory item
+
+### Google Calendar Integration (`/api/google`)
+- `GET /api/google/status` — Check Google account sync status
+- `GET /api/google/oauth/login` — Initiate Google OAuth 2.0 flow
+- `GET /api/google/oauth/callback` — Handle Google OAuth callback
+- `POST /api/google/oauth/logout` — Disconnect Google Calendar integration
+
+### Workflow Evaluations (`/api/evals`)
+- `GET /api/evals/runs` — List recorded evaluation runs
+- `POST /api/evals/run` — Save an evaluation benchmark run
 
 ## Testing
 
 ```bash
-PYTHONPATH=. .venv/bin/pytest
+python -m pytest
 ```
 
-The tests use a temporary SQLite database and mock the NIM LLM call.
+Tests run against an isolated temporary SQLite database and mock external LLM calls.
 
-## Docker
+## Deployment
 
+### 1. Render (Backend API)
+The backend is configured for deployment on [Render](https://render.com) using [`render.yaml`](file:///c:/Users/KARAN/OneDrive/Desktop/agentic_ai/predestination_deployment/AI-Visual-scheduler/render.yaml):
+- Configured for the Python runtime (`uvicorn app.main:app`).
+- Set `COOKIE_SECURE=true` and configure production database URL (PostgreSQL via `psycopg2-binary`).
+- CORS middleware is configured to accept credentials from the Netlify production domain.
+
+### 2. Netlify (Frontend)
+The frontend is configured for deployment on [Netlify](https://www.netlify.com) using [`netlify.toml`](file:///c:/Users/KARAN/OneDrive/Desktop/agentic_ai/predestination_deployment/AI-Visual-scheduler/netlify.toml):
+- Publishes the `frontend/` directory.
+- Configures SPA redirect rule (`/* -> /index.html`).
+
+### 3. Docker (Self-Hosted)
 ```bash
 docker build -t predestination .
 docker run --env-file .env -p 8000:8000 predestination
 ```
-
-For deployment, SQLite is fine for a single instance with persistent disk. For a real multi-user deployment, set `DATABASE_URL` to a Postgres database and set `COOKIE_SECURE=true` behind HTTPS.
