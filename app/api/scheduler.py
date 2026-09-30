@@ -8,7 +8,7 @@ from app.db.models import User
 from app.db.session import get_session
 from app.schemas.scheduler import BlockRequest
 from app.services import auth_service, calendar_service, scheduler_service
-from app.services.time_utils import parse_positive_float, snap_to_30_min
+from app.services.time_utils import parse_positive_float, snap_to_30_min, validate_calendar_date
 
 router = APIRouter(prefix="/api", tags=["scheduler"])
 
@@ -22,6 +22,7 @@ def get_slots(
     calendar_service.sync_gcal_events(session, user)
     date_str = date or datetime.now().strftime("%Y-%m-%d")
     try:
+        validate_calendar_date(date_str)
         return scheduler_service.slots_for_date(session, user, date_str)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid date format") from exc

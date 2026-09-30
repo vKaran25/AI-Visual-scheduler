@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, Request, Response
 from pwdlib import PasswordHash
 from sqlmodel import Session, select
 
-from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, JWT_ALGORITHM, JWT_SECRET_KEY
+from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SAMESITE, COOKIE_SECURE, JWT_ALGORITHM, JWT_SECRET_KEY
 from app.db.models import User
 from app.db.session import get_session
 
@@ -32,8 +32,8 @@ def set_auth_cookie(response: Response, token: str) -> None:
         AUTH_COOKIE,
         token,
         httponly=True,
-        samesite="none",
-        secure=True,
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
@@ -42,8 +42,8 @@ def clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(
         AUTH_COOKIE,
         httponly=True,
-        samesite="none",
-        secure=True,
+        samesite=COOKIE_SAMESITE,
+        secure=COOKIE_SECURE,
         path="/",
     )
 
@@ -75,7 +75,12 @@ def get_current_user(request: Request, session: Session = Depends(get_session)) 
         raise HTTPException(status_code=401, detail="Authentication required")
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        user_id = int(payload.get("sub"))
+        if payload.get("type") != "access":
+            raise ValueError("Not an access token")
+        subject = payload.get("sub")
+        if not isinstance(subject, str) or not subject.isdigit():
+            raise ValueError("Invalid user ID")
+        user_id = int(subject)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid or expired session") from exc
     user = session.get(User, user_id)

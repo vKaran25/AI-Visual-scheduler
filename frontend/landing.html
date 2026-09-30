@@ -226,7 +226,15 @@
 </style>
 
 <script>
-  window.API_BASE_URL = "https://predestination.onrender.com";
+  const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const staticFrontend = window.location.hostname.endsWith('.netlify.app') ||
+    (localHost && window.location.port !== '8000') || window.location.protocol === 'file:';
+  window.API_BASE_URL = window.location.hostname.endsWith('.netlify.app')
+    ? 'https://predestination.onrender.com'
+    : localHost && staticFrontend
+      ? `${window.location.protocol}//${window.location.hostname}:8000`
+      : window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+  window.PLANNER_URL = staticFrontend ? 'index.html' : '/';
 </script>
 </head>
 <body>
@@ -272,7 +280,7 @@ const authError    = document.getElementById('auth-error');
 const mainContent  = document.getElementById('main-content');
 
 async function checkAuth() {
-  try { const r = await fetch(window.API_BASE_URL + '/api/me', { credentials: 'include' }); if (r.ok) { window.location.href = 'index.html'; return; } } catch (e) {}
+  try { const r = await fetch(window.API_BASE_URL + '/api/me', { credentials: 'include' }); if (r.ok) { window.location.href = window.PLANNER_URL; return; } } catch (e) {}
   mainContent.style.display = 'flex';
 }
 async function readApiError(response, fallback='Request failed') {
@@ -289,7 +297,7 @@ async function submitAuth(mode) {
   try {
     const r = await fetch(window.API_BASE_URL + `/api/auth/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}), credentials: 'include' });
     if (!r.ok) { authError.textContent = await readApiError(r, 'Could not sign in.'); return; }
-    window.location.href = 'index.html';
+    window.location.href = window.PLANNER_URL;
   } catch(e) { authError.textContent = 'Network error.'; }
 }
 document.getElementById('auth-login-btn').addEventListener('click', () => submitAuth('login'));

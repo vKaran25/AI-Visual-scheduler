@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.db.models import User
@@ -16,7 +16,10 @@ def list_memory(session: Session = Depends(get_session), user: User = Depends(au
 
 @router.post("/memory")
 def create_memory(data: MemoryRequest, session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)):
-    return memory_service.create_memory(session, user, data.type, data.content)
+    try:
+        return memory_service.create_memory(session, user, data.type, data.content, data.chat_session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/memory/{memory_id}")

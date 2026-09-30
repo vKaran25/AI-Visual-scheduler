@@ -14,6 +14,10 @@ services:
         value: "60"
       - key: COOKIE_SECURE
         value: "true"
+      - key: CORS_ORIGINS
+        value: https://predestinationai.netlify.app
+      - key: GOOGLE_CALENDAR_TIMEZONE
+        value: UTC
       - key: APP_BASE_URL
         sync: false
       - key: NVIDIA_API_KEY

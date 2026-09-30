@@ -9,8 +9,8 @@ from app.services.time_utils import (
     MIN_FREE_BLOCK_MINUTES,
     minutes_to_time,
     normalize_repeat_days,
-    parse_float,
-    parse_positive_float,
+    validate_calendar_date,
+    snap_to_5_min,
     validate_time_range,
     weekday_for_date,
 )
@@ -102,10 +102,10 @@ def validate_no_overlap(session: Session, user_id: int, start_minutes: int, end_
         raise ValueError(f"Time overlaps with existing block: {conflict.label}")
 
 
-def create_block(session: Session, user: User, data: dict, *, is_default=False, is_pending=False, session_id=None, preset_source=None, skip_overlap=False) -> Block:
+def create_block(session: Session, user: User, data: dict, *, is_default=False, is_pending=False, session_id=None, preset_source=None, skip_overlap=False, commit=True) -> Block:
     start_minutes, end_minutes = validate_time_range(data.get("start"), data.get("end"))
     repeat_days = normalize_repeat_days(data.get("repeatDays", []))
-    date = None if repeat_days else data.get("date")
+    date = None if repeat_days else validate_calendar_date(data.get("date"))
     if not skip_overlap:
         validate_no_overlap(session, user.id, start_minutes, end_minutes, date, repeat_days)
     block = Block(
@@ -125,8 +125,11 @@ def create_block(session: Session, user: User, data: dict, *, is_default=False, 
         preset_source=preset_source,
     )
     session.add(block)
-    session.commit()
-    session.refresh(block)
+    if commit:
+        session.commit()
+        session.refresh(block)
+    else:
+        session.flush()
     return block
 
 
@@ -141,6 +144,8 @@ def update_block(session: Session, user: User, block_id: int, data: dict) -> Blo
     date = data.get("date", block.date)
     if repeat_days:
         date = None
+    else:
+        date = validate_calendar_date(date)
     validate_no_overlap(session, user.id, start_minutes, end_minutes, date, repeat_days, ignore_id=block_id)
     block.date = date
     block.start = start
@@ -184,7 +189,7 @@ def delete_blocks_by_flags(session: Session, user: User, *, is_default=None, is_
 
 
 def compute_free_blocks(session: Session, user: User, start_dt_str: str, total_hours: float, max_days: int = MAX_SEARCH_DAYS) -> dict:
-    start_dt = datetime.fromisoformat(start_dt_str)
+    start_dt = snap_to_5_min(datetime.fromisoformat(start_dt_str))
     total_minutes = max(0, round(total_hours * 60))
     total_minutes = round(total_minutes / 5) * 5
     total_minutes = max(total_minutes, MIN_FREE_BLOCK_MINUTES)
@@ -253,8 +258,30 @@ def compute_free_blocks(session: Session, user: User, start_dt_str: str, total_h
     }
 
 
+def check_pending_conflicts(session: Session, user: User, blocks: list[Block]) -> None:
+    """Reject new conflicts, including conflicting blocks within the same draft."""
+    if user.id is None:
+        raise ValueError("User must be saved before confirming")
+    others = user_blocks(session, user.id)
+    for block in blocks:
+        if block.date is None:
+            raise ValueError("Cannot confirm a pending block without a date")
+        for other in others:
+            if other.id == block.id:
+                continue
+            if (slot_applies_to_date(other, block.date) and
+                    block.start_minutes < other.end_minutes and block.end_minutes > other.start_minutes):
+                raise ValueError(
+                    f"Cannot confirm: {block.date} {block.start}–{block.end} "
+                    f"({block.label}) overlaps with {other.label}"
+                )
+
+
 def accept_pending_slots(session: Session, user: User, session_id: str, mark_as_gcal=False) -> list[Block]:
     blocks = list(session.exec(select(Block).where(Block.user_id == user.id, Block.session_id == session_id, Block.is_pending == True)).all())
+    if not blocks:
+        return []
+    check_pending_conflicts(session, user, blocks)
     for block in blocks:
         block.is_pending = False
         if mark_as_gcal:
