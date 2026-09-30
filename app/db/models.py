@@ -53,6 +53,7 @@ class AgentSession(SQLModel, table=True):
     summary: str = ""
     title: str = ""                        # Auto-named from conversation (e.g. "Redis 7-day plan")
     calendar_snapshot: str = ""            # Calendar state at session start
+    draft_revision: Optional[str] = None       # Changes each time a pending draft is replaced
     created_at: datetime = Field(default_factory=utc_now)
     last_accessed_at: datetime = Field(default_factory=utc_now)   # Updated every time the session is resumed
     finished_at: Optional[datetime] = Field(default=None)          # Set when confirmed or rejected

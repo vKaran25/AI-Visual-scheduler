@@ -91,26 +91,40 @@ def apply_preset(session: Session, user: User, preset_id: str, clear_existing: b
     preset = get_preset(session, user, preset_id)
     if not preset:
         raise ValueError("Preset not found")
-    if clear_existing:
-        for block in scheduler_service.user_blocks(session, user.id):
-            if not block.is_gcal:
-                session.delete(block)
-        session.commit()
-    created = []
+    if user.id is None:
+        raise ValueError("User must be saved before applying presets")
+    # Validate the entire preset before touching the user's existing schedule.
     for block_data in preset["blocks"]:
-        block = scheduler_service.create_block(
-            session,
-            user,
-            block_data,
-            is_default=True,
-            preset_source=preset_id,
-            skip_overlap=clear_existing,
-        )
-        created.append(scheduler_service.block_to_dict(block))
-    return {"preset": preset, "created": created}
+        if not isinstance(block_data, dict):
+            raise ValueError("Preset blocks must be objects")
+        scheduler_service.validate_time_range(block_data.get("start"), block_data.get("end"))
+        if not scheduler_service.normalize_repeat_days(block_data.get("repeatDays")):
+            if not block_data.get("date"):
+                raise ValueError("One-time preset blocks need a date")
+            scheduler_service.validate_calendar_date(block_data["date"])
+    try:
+        if clear_existing:
+            for block in scheduler_service.user_blocks(session, user.id):
+                if not block.is_gcal:
+                    session.delete(block)
+            session.flush()
+        created = []
+        for block_data in preset["blocks"]:
+            block = scheduler_service.create_block(
+                session, user, block_data, is_default=True,
+                preset_source=preset_id, commit=False,
+            )
+            created.append(scheduler_service.block_to_dict(block))
+        session.commit()
+        return {"preset": preset, "created": created}
+    except Exception:
+        session.rollback()
+        raise
 
 
 def create_custom_preset(session: Session, user: User, name: str, description: str = "", blocks: list[dict] | None = None) -> CustomPreset:
+    if user.id is None:
+        raise ValueError("User must be saved before creating presets")
     if blocks is None:
         blocks = [
             {

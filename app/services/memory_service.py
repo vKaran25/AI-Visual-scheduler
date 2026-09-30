@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
-from app.db.models import Block, Memory, User
+from app.db.models import AgentSession, Block, Memory, User
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +171,20 @@ def list_memories(session: Session, user: User) -> list[Memory]:
     )
 
 
-def create_memory(session: Session, user: User, memory_type: str, content: str) -> Memory:
-    memory = Memory(user_id=user.id, type=memory_type, content=content)
+def create_memory(session: Session, user: User, memory_type: str, content: str, chat_session_id: str | None = None) -> Memory:
+    memory_type = "pref" if memory_type == "preference" else memory_type
+    if memory_type not in ("pref", "fact"):
+        raise ValueError("Memory type must be pref or fact")
+    content = content.strip()
+    if not content:
+        raise ValueError("Memory content is required")
+    if memory_type == "fact":
+        owned_session = session.get(AgentSession, chat_session_id) if chat_session_id else None
+        if not owned_session or owned_session.user_id != user.id:
+            raise ValueError("Facts require a session owned by the user")
+    elif chat_session_id:
+        raise ValueError("Permanent preferences cannot be tied to a session")
+    memory = Memory(user_id=user.id, type=memory_type, content=content, chat_session_id=chat_session_id)
     session.add(memory)
     session.commit()
     session.refresh(memory)

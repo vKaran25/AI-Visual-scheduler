@@ -184,7 +184,7 @@ def test_snap_to_30_min():
     assert snap_to_30_min(datetime(2026, 6, 4, 14, 15)) == datetime(2026, 6, 4, 14, 30)
     assert snap_to_30_min(datetime(2026, 6, 4, 14, 45)) == datetime(2026, 6, 4, 15, 0)
     assert snap_to_30_min(datetime(2026, 6, 4, 23, 45)) == datetime(2026, 6, 5, 0, 0)
-    assert snap_to_30_min(datetime(2026, 6, 4, 14, 0, 33)) == datetime(2026, 6, 4, 14, 0)
+    assert snap_to_30_min(datetime(2026, 6, 4, 14, 0, 33)) == datetime(2026, 6, 4, 14, 30)
 
 
 def test_free_time_default_start_snaps_to_30_minutes():

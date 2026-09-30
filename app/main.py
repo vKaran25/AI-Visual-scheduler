@@ -7,9 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from app.api import agent, auth, evals, google, memory, presets, scheduler
+from app.core.config import APP_BASE_URL, CORS_ORIGINS
 from app.db.session import create_db_and_tables
 
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 @asynccontextmanager
@@ -22,7 +24,7 @@ app = FastAPI(title="Predestination - AI Visual Scheduler", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://predestinationai.netlify.app"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -5,7 +5,7 @@ currentDate.setHours(0,0,0,0);
 let currentUser = null;
 let presets = [];
 let allSlots = [];          // all busy slots from server
-     // last free-time search result
+let freeResults = null;     // last free-time search result
 let editingSlotId = null;   // null = add mode, number = edit mode
 let selectedColor = '#d81b60';
 let selectedDays = [];      // repeat days for modal
@@ -294,7 +294,14 @@ function renderBlocks(){
   });
 }
 
-px`;
+function reHighlightFree(result){
+  timeline.querySelectorAll('.free-highlight').forEach(e=>e.remove());
+  if(!result) return;
+  const ds = dateStr(currentDate);
+  result.allocated.filter(b=>b.date===ds).forEach(b=>{
+    const el = document.createElement('div');
+    el.className = 'free-highlight';
+    el.style.top = `${b.startMinutes}px`;
     el.style.height = `${heightPx(b.endMinutes-b.startMinutes)}px`;
     el.title = `Free: ${b.start}–${b.end}`;
     timeline.appendChild(el);
@@ -405,10 +412,7 @@ function getAiStartAfter(){
   const timeVal = document.getElementById('ai-start-time')?.value;
   if(!dateVal || !timeVal) return null;
   return `${dateVal}T${timeVal}`;
-}T${timeVal}`;
 }
-
-
 
 function setDate(d){
   currentDate = new Date(d); currentDate.setHours(0,0,0,0);
@@ -572,15 +576,6 @@ async function deleteSlot(id){
     else { showToast('Delete failed','error'); }
   } catch(e){ showToast('Network error','error'); }
 }
-
-// ── Add Busy Block ─────────────────────────────────────────────────
-// Toggle repeat days visibility
-
-});
-
-
-
-
 
 // ── Preset Remove ──────────────────────────────────────────────────
 presetRemoveBtn.addEventListener('click', async () => {

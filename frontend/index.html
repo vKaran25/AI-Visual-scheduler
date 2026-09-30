@@ -340,6 +340,15 @@
     letter-spacing: 0;
     font-weight: 700;
   }
+  #memory-toggle { width: 100%; text-align: left; }
+  #memory-panel[hidden] { display: none; }
+  .memory-note, .memory-status { color: var(--text2); font-size: 11px; line-height: 1.5; }
+  .memory-status.error { color: var(--red); }
+  #memory-list { list-style: none; padding: 0; margin: 8px 0; }
+  .memory-item { display: flex; align-items: start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .memory-item span { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; }
+  .memory-item button { flex-shrink: 0; }
+  #memory-input { resize: vertical; min-height: 54px; margin: 8px 0; }
 
   /* Quick form */
   .form-row { display: flex; gap: 6px; margin-bottom: 6px; }
@@ -1199,6 +1208,7 @@
   /* ── Bulk Actions ────────────────────────────────────────────── */
   .bulk-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 8px;
     padding: 8px;
@@ -1413,7 +1423,16 @@
 </style>
 
 <script>
-  window.API_BASE_URL = "https://predestination.onrender.com";
+  // FastAPI serves / and /home; Netlify and local static servers serve the HTML files.
+  const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const staticFrontend = window.location.hostname.endsWith('.netlify.app') ||
+    (localHost && window.location.port !== '8000') || window.location.protocol === 'file:';
+  window.API_BASE_URL = window.location.hostname.endsWith('.netlify.app')
+    ? 'https://predestination.onrender.com'
+    : localHost && staticFrontend
+      ? `${window.location.protocol}//${window.location.hostname}:8000`
+      : window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+  window.LOGIN_URL = staticFrontend ? 'landing.html' : '/home';
 </script>
 </head>
 <body>
@@ -1531,6 +1550,21 @@
         </div>
       </div>
 
+      <!-- Permanent AI preferences (session facts are managed in chat) -->
+      <div class="sb-section">
+        <button type="button" id="memory-toggle" class="btn-cancel" aria-expanded="false" aria-controls="memory-panel">Preferences ▸</button>
+        <div id="memory-panel" hidden>
+          <p class="memory-note">Saved preferences help the AI plan future sessions.</p>
+          <ul id="memory-list" aria-label="Saved preferences"></ul>
+          <form id="memory-form">
+            <label class="form-label" for="memory-input">Add a preference</label>
+            <textarea id="memory-input" class="form-input" maxlength="500" placeholder="e.g. I prefer studying in the morning"></textarea>
+            <button type="submit" id="memory-add-btn" class="btn-primary">Save preference</button>
+          </form>
+          <p id="memory-status" class="memory-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+
       <!-- Find Free Time -->
       <div class="sb-section">
         <div class="sb-title">Find Free Time</div>
@@ -1613,7 +1647,11 @@
       <div id="ai-chat-input-area">
         <div style="display: flex; gap: 10px; margin-bottom: 6px;">
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
-            <label class="form-label">Start After: <span id="ai-start-display" style="font-weight: 500;"></span></label>
+            <label class="form-label" for="ai-start-date">Schedule from</label>
+            <div style="display:flex;gap:4px;">
+              <input type="date" id="ai-start-date" class="form-input" aria-label="Plan start date" style="min-width:0;">
+              <input type="time" id="ai-start-time" class="form-input" aria-label="Plan start time" style="min-width:0;">
+            </div>
           </div>
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; text-align: right;">
             <label class="form-label">Slack: <span id="slack-val">0.0</span></label>
@@ -1677,6 +1715,7 @@
     </div>
     <div id="modal-footer">
       <button class="btn-delete" id="modal-delete" style="display:none">Delete</button>
+      <button class="btn-cancel" id="modal-save-template" style="display:none">Save as Template</button>
       <button class="btn-cancel" id="modal-cancel">Cancel</button>
       <button class="btn-save" id="modal-save">Save</button>
     </div>
@@ -1732,6 +1771,12 @@ const presetSelect  = document.getElementById('preset-select');
 const presetSummary = document.getElementById('preset-summary');
 const presetApplyBtn = document.getElementById('preset-apply-btn');
 const presetRemoveBtn = document.getElementById('preset-remove-btn');
+const memoryToggle = document.getElementById('memory-toggle');
+const memoryPanel = document.getElementById('memory-panel');
+const memoryList = document.getElementById('memory-list');
+const memoryInput = document.getElementById('memory-input');
+const memoryStatus = document.getElementById('memory-status');
+const memoryAddBtn = document.getElementById('memory-add-btn');
 
 // ── Helpers ───────────────────────────────────────────────────────
 function pad(n){ return String(n).padStart(2,'0'); }
@@ -1793,7 +1838,9 @@ function showToast(msg, type='info'){
 async function readApiError(response, fallback='Request failed'){
   try {
     const data = await response.json();
-    return data.error || data.detail || fallback;
+    const detail = data.error || data.detail;
+    if(Array.isArray(detail)) return detail.map(item => item.msg || String(item)).join('; ');
+    return typeof detail === 'string' ? detail : fallback;
   } catch(e) {
     return fallback;
   }
@@ -1803,20 +1850,124 @@ async function checkAuth(){
   try {
     const r = await fetch(window.API_BASE_URL + '/api/me', { credentials: 'include' });
     if(!r.ok){
-      window.location.href = 'landing.html';
+      window.location.href = window.LOGIN_URL;
       return false;
     }
     currentUser = await r.json();
     userEmail.textContent = currentUser.email;
     return true;
   } catch(e) {
-    window.location.href = 'landing.html';
+    window.location.href = window.LOGIN_URL;
     return false;
   }
 }
 logoutBtn.addEventListener('click', async ()=>{
   await fetch(window.API_BASE_URL + '/api/auth/logout', {method:'POST', credentials: 'include'});
-  window.location.href = 'landing.html';
+  window.location.href = window.LOGIN_URL;
+});
+
+// Only global preferences belong in this panel; session facts stay in their chat.
+let memoryLoadId = 0;
+let memoryActionInFlight = false;
+
+function memoryMessage(message, error=false){
+  memoryStatus.textContent = message;
+  memoryStatus.classList.toggle('error', error);
+}
+
+function renderMemoryPreferences(memories){
+  memoryList.replaceChildren();
+  for(const pref of memories.filter(item => item.type === 'pref' && Number.isInteger(item.id))){
+    const row = document.createElement('li');
+    row.className = 'memory-item';
+    const content = document.createElement('span');
+    content.textContent = pref.content;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn-cancel';
+    remove.textContent = 'Remove';
+    remove.setAttribute('aria-label', 'Remove preference');
+    remove.addEventListener('click', () => removeMemoryPreference(pref.id));
+    row.append(content, remove);
+    memoryList.appendChild(row);
+  }
+  if(!memoryList.children.length){
+    const empty = document.createElement('li');
+    empty.className = 'memory-note';
+    empty.textContent = 'No preferences saved yet.';
+    memoryList.appendChild(empty);
+  }
+}
+
+async function loadMemoryPreferences(){
+  const requestId = ++memoryLoadId;
+  memoryMessage('Loading preferences…');
+  try {
+    const r = await fetch(window.API_BASE_URL + '/api/memory', {credentials: 'include'});
+    if(requestId !== memoryLoadId) return;
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok) throw new Error(await readApiError(r, 'Could not load preferences'));
+    const memories = await r.json();
+    if(requestId !== memoryLoadId) return;
+    if(!Array.isArray(memories)) throw new Error('Unexpected preferences response');
+    renderMemoryPreferences(memories);
+    memoryMessage('');
+  } catch(e){
+    if(requestId === memoryLoadId) memoryMessage(e.message || 'Could not load preferences', true);
+  }
+}
+
+function setMemoryBusy(busy){
+  memoryActionInFlight = busy;
+  memoryAddBtn.disabled = busy;
+  memoryList.querySelectorAll('button').forEach(btn => btn.disabled = busy);
+}
+
+async function addMemoryPreference(){
+  if(memoryActionInFlight) return;
+  const content = memoryInput.value.trim();
+  if(!content){ memoryMessage('Enter a preference first.', true); return; }
+  setMemoryBusy(true);
+  try {
+    const r = await fetch(window.API_BASE_URL + '/api/memory', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+      body: JSON.stringify({type: 'pref', content})
+    });
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok) throw new Error(await readApiError(r, 'Could not save preference'));
+    memoryInput.value = '';
+    await loadMemoryPreferences();
+    showToast('Preference saved', 'success');
+  } catch(e){ memoryMessage(e.message || 'Could not save preference', true); }
+  finally { setMemoryBusy(false); }
+}
+
+async function removeMemoryPreference(id){
+  if(memoryActionInFlight || !window.confirm('Remove this preference from future plans?')) return;
+  setMemoryBusy(true);
+  try {
+    const r = await fetch(window.API_BASE_URL + `/api/memory/${encodeURIComponent(id)}`, {
+      method: 'DELETE', credentials: 'include'
+    });
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok) throw new Error(await readApiError(r, 'Could not remove preference'));
+    await loadMemoryPreferences();
+    showToast('Preference removed', 'success');
+  } catch(e){ memoryMessage(e.message || 'Could not remove preference', true); }
+  finally { setMemoryBusy(false); }
+}
+
+memoryToggle.addEventListener('click', () => {
+  memoryPanel.hidden = !memoryPanel.hidden;
+  const open = !memoryPanel.hidden;
+  memoryToggle.setAttribute('aria-expanded', String(open));
+  memoryToggle.textContent = open ? 'Preferences ▾' : 'Preferences ▸';
+  if(open) loadMemoryPreferences();
+  else ++memoryLoadId;
+});
+document.getElementById('memory-form').addEventListener('submit', e => {
+  e.preventDefault();
+  addMemoryPreference();
 });
 
 function buildGrid(){
@@ -1849,6 +2000,8 @@ function updateNowLine(){
 
 // ── Fetch & render ────────────────────────────────────────────────
 let pendingHighlight = null;
+let slotsRequestId = 0;
+let freeSearchId = 0;
 
 function executePendingHighlight() {
   if (!pendingHighlight) return;
@@ -1875,24 +2028,33 @@ function executePendingHighlight() {
 }
 
 async function fetchSlots(){
+  const requestedDate = dateStr(currentDate);
+  const requestId = ++slotsRequestId;
+  ++freeSearchId;
+  if(freeResults){
+    freeResults = null;
+    freeResults_.innerHTML = '<div class="free-status info">Schedule changed. Search again for current free time.</div>';
+    reHighlightFree(null);
+  }
   try {
-    const r = await fetch(window.API_BASE_URL + `/api/slots?date=${dateStr(currentDate)}`, { credentials: 'include' });
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
+    const r = await fetch(window.API_BASE_URL + `/api/slots?date=${requestedDate}`, { credentials: 'include' });
+    if(requestId !== slotsRequestId) return;
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Failed to load slots'), 'error'); return; }
     const data = await r.json();
+    if(requestId !== slotsRequestId) return;
     allSlots = data;
     renderBlocks();
     renderSidebar();
-    if(freeResults) reHighlightFree(freeResults);
     navigateToStep(detectCurrentStep());
     executePendingHighlight();
-  } catch(e){ showToast('Failed to load slots','error'); }
+  } catch(e){ if(requestId === slotsRequestId) showToast('Failed to load slots','error'); }
 }
 
 async function loadPresets(){
   try {
     const r = await fetch(window.API_BASE_URL + '/api/presets', { credentials: 'include' });
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not load presets'), 'error'); return; }
     presets = await r.json();
     presetSelect.innerHTML = '';
@@ -1923,15 +2085,15 @@ presetApplyBtn.addEventListener('click', async ()=>{
   const presetId = presetSelect.value;
   if(!presetId){ showToast('Choose a preset first', 'error'); return; }
   const preset = presets.find(item=>item.id === presetId);
-  const clearExisting = window.confirm(`Apply "${preset ? preset.name : 'preset'}"? Choose OK to replace existing non-Google blocks, or Cancel to add only if there is no overlap.`);
+  if(!window.confirm(`Apply "${preset ? preset.name : 'preset'}"? This replaces existing non-Google blocks.`)) return;
   try {
     const r = await fetch(window.API_BASE_URL + `/api/presets/${encodeURIComponent(presetId)}/apply`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({clear_existing: clearExisting}),
+      body: JSON.stringify({clear_existing: true}),
       credentials: 'include'
     });
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Could not apply preset'), 'error'); return; }
     showToast('Preset applied', 'success');
     await fetchSlots();
@@ -2024,8 +2186,9 @@ function renderSidebar(){
   if (pendingCount > 0) {
     html += `
       <div class="bulk-actions">
-        <button class="btn-primary" data-action="accept-all">Accept All (${pendingCount})</button>
-        <button class="btn-cancel" data-action="reject-all">Reject All</button>
+        <button class="btn-primary" data-action="accept-all" title="Accepts entire sessions, including blocks on other days">Accept Sessions (${pendingCount} here)</button>
+        <button class="btn-cancel" data-action="reject-all" title="Rejects entire sessions, including blocks on other days">Reject Sessions</button>
+        <small style="flex-basis:100%;color:var(--text2);">Affects all days in these sessions.</small>
       </div>
     `;
   }
@@ -2096,17 +2259,18 @@ function escHtml(s){
 
 // ── Date navigation ───────────────────────────────────────────────
 function getAiStartAfter(){
-  const dateVal = document.getElementById('free-date').value;
-  const timeVal = document.getElementById('free-time').value;
+  const dateVal = document.getElementById('ai-start-date').value;
+  const timeVal = document.getElementById('ai-start-time').value;
   if(!dateVal || !timeVal) return null;
-  return `${dateVal}T${timeVal}`;
+  const value = `${dateVal}T${timeVal}`;
+  const parsed = new Date(value);
+  return !isNaN(parsed.getTime()) && dateTimeLocalStr(parsed) === value ? value : null;
 }
 
-function updateAiStartDisplay(){
-  const el = document.getElementById('ai-start-display');
-  if(!el) return;
-  const v = getAiStartAfter();
-  el.textContent = formatHumanDateTime(v);
+function defaultAiStart(){
+  const nextHalfHour = new Date(Math.ceil(Date.now() / 1800000) * 1800000);
+  document.getElementById('ai-start-date').value = dateStr(nextHalfHour);
+  document.getElementById('ai-start-time').value = `${pad(nextHalfHour.getHours())}:${pad(nextHalfHour.getMinutes())}`;
 }
 
 function setDate(d){
@@ -2115,7 +2279,9 @@ function setDate(d){
   dateDisplay.textContent = formatDate(currentDate);
   datePicker.value = ds;
   document.getElementById('free-date').value = ds;
-  updateAiStartDisplay();
+  freeResults = null;
+  freeResults_.replaceChildren();
+  timeline.querySelectorAll('.free-highlight').forEach(el => el.remove());
   fetchSlots();
   updateNowLine();
 }
@@ -2184,6 +2350,7 @@ function openAddModal(startM=null, endM=null){
   modalTitle.textContent = 'Add Block';
   modalSave.textContent = 'Add';
   modalDelete.style.display = 'none';
+  document.getElementById('modal-save-template').style.display = 'block';
   mStart.value = startM!=null ? minutesToTime(startM) : '09:00';
   mEnd.value   = endM!=null   ? minutesToTime(Math.min(endM,1439)) : '10:00';
   mLabel.value = '';
@@ -2200,6 +2367,7 @@ function openEditModal(slot){
   modalTitle.textContent = 'Edit Block';
   modalSave.textContent = 'Save';
   modalDelete.style.display = 'block';
+  document.getElementById('modal-save-template').style.display = 'none';
   mStart.value = slot.start;
   mEnd.value   = slot.end;
   mLabel.value = slot.label || '';
@@ -2246,7 +2414,7 @@ modalSave.addEventListener('click', async ()=>{
     } else {
       r = await fetch(window.API_BASE_URL + '/api/slots',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), credentials: 'include' });
     }
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
     if(!r.ok){ showToast(await readApiError(r, 'Error'),'error'); return; }
     closeModal();
     showToast(editingSlotId!=null ? 'Block updated' : 'Block added','success');
@@ -2257,17 +2425,19 @@ modalSave.addEventListener('click', async ()=>{
 // ── Delete ────────────────────────────────────────────────────────
 modalDelete.addEventListener('click', async ()=>{
   if(editingSlotId==null) return;
-  await deleteSlot(editingSlotId);
-  closeModal();
+  if(await deleteSlot(editingSlotId)) closeModal();
 });
 
 async function deleteSlot(id){
+  const slot = allSlots.find(s => s.id === id);
+  if(slot?.repeatDays?.length && !window.confirm('Delete this recurring block on every matching day?')) return false;
   try {
     const r = await fetch(window.API_BASE_URL + `/api/slots/${id}`,{method:'DELETE', credentials: 'include'});
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
-    if(r.ok){ showToast('Block deleted','info'); await fetchSlots(); }
-    else { showToast('Delete failed','error'); }
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(r.ok){ showToast('Block deleted','info'); await fetchSlots(); return true; }
+    showToast(await readApiError(r, 'Delete failed'),'error');
   } catch(e){ showToast('Network error','error'); }
+  return false;
 }
 
 // ── Add Busy Block ─────────────────────────────────────────────────
@@ -2303,7 +2473,7 @@ document.getElementById('b-add-btn').addEventListener('click', async () => {
       body: JSON.stringify({ start, end, label, color, repeatDays, date: repeatDays.length ? null : dateStr(currentDate) }),
       credentials: 'include'
     });
-    if (r.status === 401) { window.location.href = 'landing.html'; return; }
+    if (r.status === 401) { window.location.href = window.LOGIN_URL; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
     showToast('Block added', 'success');
     document.getElementById('b-label').value = '';
@@ -2337,11 +2507,11 @@ document.getElementById('b-save-template-btn').addEventListener('click', async (
       body: JSON.stringify({
         name: templateName,
         description: `Custom template: ${label}`,
-        blocks: [{ label, start, end, color, repeatDays }]
+        blocks: [{ label, start, end, color, repeatDays, date: repeatDays.length ? null : dateStr(currentDate) }]
       }),
       credentials: 'include'
     });
-    if (r.status === 401) { window.location.href = 'landing.html'; return; }
+    if (r.status === 401) { window.location.href = window.LOGIN_URL; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Error'), 'error'); return; }
     showToast('Template saved', 'success');
     await loadPresets();
@@ -2356,7 +2526,7 @@ presetRemoveBtn.addEventListener('click', async () => {
   
   try {
     const r = await fetch(window.API_BASE_URL + `/api/presets/${encodeURIComponent(presetId)}/remove`, { method: 'DELETE', credentials: 'include' });
-    if (r.status === 401) { window.location.href = 'landing.html'; return; }
+    if (r.status === 401) { window.location.href = window.LOGIN_URL; return; }
     if (!r.ok) { showToast(await readApiError(r, 'Remove failed'), 'error'); return; }
     const data = await r.json();
     showToast(`Removed ${data.removed} block(s)`, 'info');
@@ -2378,18 +2548,50 @@ document.getElementById('free-search-btn').addEventListener('click', async ()=>{
   if(startDt < nowIso){ showToast('Start time is in the past','error'); return; }
 
   const btn = document.getElementById('free-search-btn');
+  const searchId = ++freeSearchId;
+  freeResults = null;
+  reHighlightFree(null);
+  freeResults_.innerHTML = '<div class="free-status info">Searching…</div>';
   btn.disabled = true; btn.textContent = 'Searching…';
 
   try {
     const r = await fetch(window.API_BASE_URL + `/api/free?start_dt=${encodeURIComponent(startDt)}&hours=${hours}`, { credentials: 'include' });
-    if(r.status === 401){ window.location.href = 'landing.html'; return; }
-    if(!r.ok){ showToast(await readApiError(r, 'Search failed'), 'error'); return; }
+    if(searchId !== freeSearchId) return;
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok){
+      freeResults_.innerHTML = '<div class="free-status warn">Search failed. Try again.</div>';
+      showToast(await readApiError(r, 'Search failed'), 'error'); return;
+    }
     const data = await r.json();
+    if(searchId !== freeSearchId) return;
     freeResults = data;
     renderFreeResults(data);
     reHighlightFree(data);
-  } catch(e){ showToast('Search failed','error'); }
+  } catch(e){ if(searchId === freeSearchId) showToast('Search failed','error'); }
   finally { btn.disabled=false; btn.textContent='Search'; }
+});
+
+document.getElementById('modal-save-template').addEventListener('click', async () => {
+  const start = mStart.value, end = mEnd.value;
+  if(!start || !end || timeToMinutes(end) <= timeToMinutes(start)){
+    showToast('Enter a valid start and end time', 'error'); return;
+  }
+  const name = prompt('Enter template name:');
+  if(!name?.trim()) return;
+  const label = mLabel.value.trim() || 'Busy';
+  try {
+    const r = await fetch(window.API_BASE_URL + '/api/custom-presets', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+      body: JSON.stringify({ name: name.trim(), description: `Custom template: ${label}`,
+        blocks: [{ label, start, end, color: selectedColor, repeatDays: selectedDays,
+          date: selectedDays.length ? null : dateStr(currentDate) }] })
+    });
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok){ showToast(await readApiError(r, 'Could not save template'), 'error'); return; }
+    closeModal();
+    showToast('Template saved', 'success');
+    await loadPresets();
+  } catch(e){ showToast('Network error', 'error'); }
 });
 
 function renderFreeResults(data){
@@ -2429,7 +2631,7 @@ function renderFreeResults(data){
   freeResults_.innerHTML = html;
 }
 
-document.getElementById('free-time').addEventListener('change', updateAiStartDisplay);
+
 
 // ── Timeline drag-to-create ───────────────────────────────────────
 let dragStartMin = null, dragEndMin = null, isDragging = false;
@@ -2699,6 +2901,9 @@ const slackSlider = document.getElementById('slack-slider');
 const slackVal = document.getElementById('slack-val');
 let currentSessionId = null;
 let currentSessionTitle = '';
+let aiRequestInFlight = false;
+let sessionViewId = 0;
+let sessionHistoryLoading = false;
 
 function updateSessionLabel(title) {
   currentSessionTitle = title || '';
@@ -2767,13 +2972,15 @@ async function loadSessions() {
 
 
 async function startNewSession() {
+  if(aiRequestInFlight || sessionHistoryLoading) return;
   const btn = document.getElementById('ai-new-session-btn');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const r = await fetch(window.API_BASE_URL + '/api/agent/new-session', { method: 'POST', credentials: 'include' });
-    if (r.status === 401) { window.location.href = 'landing.html'; return; }
+    if (r.status === 401) { window.location.href = window.LOGIN_URL; return; }
     if (!r.ok) { showToast('Could not start new session', 'error'); return; }
     const data = await r.json();
+    ++sessionViewId;
     currentSessionId = data.session_id;
     updateSessionLabel('New Session');
 
@@ -2812,11 +3019,15 @@ async function startNewSession() {
   }
 }
 
-function resumeSession(sessionId, title) {
+async function resumeSession(sessionId, title) {
+  if(aiRequestInFlight) return;
   if (sessionId === currentSessionId) {
     closeSessionsDrawer();
     return;
   }
+  const viewId = ++sessionViewId;
+  sessionHistoryLoading = true;
+  aiSendBtn.disabled = true;
   currentSessionId = sessionId;
   updateSessionLabel(title || 'Resumed session');
 
@@ -2825,22 +3036,41 @@ function resumeSession(sessionId, title) {
     el.classList.toggle('active', el.dataset.sessionId === sessionId);
   });
 
-  // Clear chat and show resume message
-  const welcome = aiMessages.querySelector('.ai-msg');
-  aiMessages.innerHTML = '';
-  if (welcome) aiMessages.appendChild(welcome);
-
-  const resumeMsg = document.createElement('div');
-  resumeMsg.className = 'ai-msg';
-  resumeMsg.style.borderColor = 'var(--accent)';
-  resumeMsg.innerHTML = `✓ Resumed session: <strong>${escHtml(title || sessionId)}</strong><br><span style="color:var(--text2);font-size:11px">Your previous messages are loaded. Continue where you left off.</span>`;
-  aiMessages.appendChild(resumeMsg);
-  aiMessages.scrollTop = aiMessages.scrollHeight;
-
-  showToast('Session resumed', 'info');
+  aiMessages.replaceChildren();
+  const loading = document.createElement('div');
+  loading.className = 'ai-msg';
+  loading.textContent = 'Loading conversation…';
+  aiMessages.appendChild(loading);
   closeSessionsDrawer();
-  // Reload sessions list so restart time updates in history
-  loadSessions();
+  try {
+    const r = await fetch(window.API_BASE_URL + `/api/agent/sessions/${encodeURIComponent(sessionId)}/messages`, { credentials: 'include' });
+    if(viewId !== sessionViewId) return;
+    if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!r.ok) throw new Error(await readApiError(r, 'Could not load conversation history'));
+    const messages = await r.json();
+    if(viewId !== sessionViewId) return;
+    if(!Array.isArray(messages)) throw new Error('Unexpected conversation history');
+    aiMessages.replaceChildren();
+    if(!messages.length){
+      loading.textContent = 'No messages in this session yet. Start chatting!';
+      aiMessages.appendChild(loading);
+    }
+    messages.forEach(m => {
+      const el = document.createElement('div');
+      el.className = m.role === 'user' ? 'user-msg' : 'ai-msg';
+      el.textContent = m.content || '';
+      aiMessages.appendChild(el);
+    });
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+    loadSessions();
+  } catch(e){
+    if(viewId === sessionViewId) loading.textContent = `Could not load conversation history: ${e.message}`;
+  } finally {
+    if(viewId === sessionViewId){
+      sessionHistoryLoading = false;
+      aiSendBtn.disabled = false;
+    }
+  }
 }
 
 function openSessionsDrawer() {
@@ -3078,12 +3308,14 @@ function navigateToBlock(blockDate, startMinutes) {
 }
 
 aiChatBtn.addEventListener('click', () => {
-  aiChatPanel.classList.toggle('open');
+  const isOpen = aiChatPanel.classList.toggle('open');
+  localStorage.setItem('ai-panel-open', String(isOpen));
   updateAiBtnStyle();
   updateWalkthroughVisibility();
 });
 aiCloseBtn.addEventListener('click', () => {
   aiChatPanel.classList.remove('open');
+  localStorage.setItem('ai-panel-open', 'false');
   closeSessionsDrawer();
   updateAiBtnStyle();
 });
@@ -3095,16 +3327,14 @@ updateWalkthroughVisibility();
 
 async function sendAiMessage() {
   const text = aiPrompt.value.trim();
-  const startAfter = getAiStartAfter();
-  if(!text) return;
-  if(startAfter){
-    const nowIso = dateTimeLocalStr(new Date());
-    if(startAfter < nowIso){
-      showToast('Start time is in the past','error');
-      return;
-    }
-  }
-  
+  if(!text || aiRequestInFlight || sessionHistoryLoading) return;
+  // Invalid or past schedule preferences must never prevent a chat/clarification.
+  const chosenStart = getAiStartAfter();
+  const startAfter = chosenStart && chosenStart > dateTimeLocalStr(new Date()) ? chosenStart : null;
+  aiRequestInFlight = true;
+  aiSendBtn.disabled = true;
+  aiSendBtn.textContent = 'Sending…';
+  aiPrompt.disabled = true;
   aiPrompt.value = '';
   
   const uMsg = document.createElement('div');
@@ -3125,13 +3355,14 @@ async function sendAiMessage() {
       start_after: startAfter || null,
       session_id: currentSessionId || null
     };
-    const res = await fetch(window.API_BASE_URL + '/api/chat', {
+    const res = await fetch(window.API_BASE_URL + '/api/agent/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
       credentials: 'include'
     });
-    if(res.status === 401){ loadingMsg.remove(); window.location.href = 'landing.html'; return; }
+    if(res.status === 401){ window.location.href = window.LOGIN_URL; return; }
+    if(!res.ok) throw new Error(await readApiError(res, 'Could not send message'));
     const data = await res.json();
     loadingMsg.remove();
     
@@ -3166,14 +3397,19 @@ async function sendAiMessage() {
 
           const actions = document.createElement('div');
           actions.style.marginTop = '10px';
-          const sessionIdStr = JSON.stringify(data.session_id).replace(/"/g, '&quot;');
           const containerId = 'actions-' + Date.now();
           actions.id = containerId;
-          
-          actions.innerHTML = `
-            <button class="btn-primary" style="background: var(--green); margin-right: 5px; width: auto;" onclick="acceptAiEvents(${sessionIdStr}, '${containerId}')">Accept</button>
-            <button class="btn-cancel" style="width: auto;" onclick="rejectAiEvents(${sessionIdStr}, '${containerId}')">Reject & Remove</button>
-          `;
+          const accept = document.createElement('button');
+          accept.className = 'btn-primary';
+          accept.style.cssText = 'background: var(--green); margin-right: 5px; width: auto;';
+          accept.textContent = 'Accept';
+          accept.addEventListener('click', () => window.acceptAiEvents(data.session_id, containerId, data.draft_id));
+          const reject = document.createElement('button');
+          reject.className = 'btn-cancel';
+          reject.style.width = 'auto';
+          reject.textContent = 'Reject & Remove';
+          reject.addEventListener('click', () => window.rejectAiEvents(data.session_id, containerId, data.draft_id));
+          actions.append(accept, reject);
           aMsg.appendChild(actions);
        }
        
@@ -3184,88 +3420,98 @@ async function sendAiMessage() {
     aiMessages.appendChild(aMsg);
     aiMessages.scrollTop = aiMessages.scrollHeight;
   } catch (err) {
-    loadingMsg.innerText = 'Request failed: ' + err.message;
+    loadingMsg.textContent = 'Request failed: ' + err.message;
+  } finally {
+    aiRequestInFlight = false;
+    aiSendBtn.disabled = false;
+    aiSendBtn.textContent = 'Send';
+    aiPrompt.disabled = false;
   }
 }
 
-window.acceptAiEvents = async function(sessionId, containerId) {
+window.acceptAiEvents = async function(sessionId, containerId, draftId) {
     const container = document.getElementById(containerId);
-    if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">Accepting & Syncing...</span>';
+    if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = true);
     
     try {
         const r = await fetch(window.API_BASE_URL + '/api/chat/accept', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({session_id: sessionId}),
+            body: JSON.stringify({session_id: sessionId, draft_id: draftId || null}),
             credentials: 'include'
         });
-        if(r.status === 401){ window.location.href = 'landing.html'; return; }
-        if (r.ok) {
-            if(container) container.innerHTML = '<span style="color: var(--green); font-size: 12px; font-weight: bold;">Accepted and saved</span>';
+        if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+        const result = r.ok ? await r.json() : null;
+        if (r.ok && result.success) {
+            if(container) container.textContent = result.warning || 'Accepted and saved';
+            if(result.warning) showToast(result.warning, 'error');
             fetchSlots();
         } else {
-            if(container) container.innerHTML = '<span class="error-msg">Failed to accept.</span>';
+            showToast(result?.error || await readApiError(r, 'Failed to accept plan'), 'error');
+            if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = false);
         }
     } catch (e) {
-        if(container) container.innerHTML = '<span class="error-msg">Error details.</span>';
+        showToast('Network error accepting plan', 'error');
+        if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = false);
     }
 };
 
-window.rejectAiEvents = async function(sessionId, containerId) {
+window.rejectAiEvents = async function(sessionId, containerId, draftId) {
     const container = document.getElementById(containerId);
-    if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">Rejecting...</span>';
+    if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = true);
     
     try {
         const r = await fetch(window.API_BASE_URL + '/api/chat/reject', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({session_id: sessionId}),
+            body: JSON.stringify({session_id: sessionId, draft_id: draftId || null}),
             credentials: 'include'
         });
-        if(r.status === 401){ window.location.href = 'landing.html'; return; }
-        if (r.ok) {
-            if(container) container.innerHTML = '<span style="color: var(--red); font-size: 12px; font-weight: bold;">Rejected and removed</span>';
+        if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+        const result = r.ok ? await r.json() : null;
+        if (r.ok && result.success) {
+            if(container) container.textContent = 'Rejected and removed';
             fetchSlots();
         } else {
-            if(container) container.innerHTML = '<span class="error-msg">Failed to reject.</span>';
+            showToast(result?.error || await readApiError(r, 'Failed to reject plan'), 'error');
+            if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = false);
         }
     } catch (e) {
-        if(container) container.innerHTML = '<span class="error-msg">Error.</span>';
+        showToast('Network error rejecting plan', 'error');
+        if(container) container.querySelectorAll('button').forEach(btn => btn.disabled = false);
     }
 };
 
 // ── Bulk accept/reject pending blocks ──────────────────────────────
-async function acceptAllPending() {
+async function decideAllPending(action) {
   const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
-  for (const sid of pendingSessionIds) {
+  let succeeded = 0;
+  const errors = [];
+  const warnings = [];
+  for(const sid of pendingSessionIds){
     try {
-      await fetch(window.API_BASE_URL + '/api/chat/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid }),
-        credentials: 'include'
+      const r = await fetch(window.API_BASE_URL + `/api/agent/${action}`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session_id: sid }), credentials: 'include'
       });
-    } catch (e) { /* continue */ }
+      if(r.status === 401){ window.location.href = window.LOGIN_URL; return; }
+      const result = r.ok ? await r.json() : null;
+      if(r.ok && result.success){
+        succeeded++;
+        if(result.warning) warnings.push(result.warning);
+      } else errors.push(result?.error || await readApiError(r, `Could not ${action} session`));
+    } catch(e){ errors.push('Network error'); }
   }
-  showToast('All pending blocks accepted', 'success');
-  fetchSlots();
+  if(succeeded){
+    showToast(`${succeeded} session(s) ${action === 'confirm' ? 'accepted' : 'rejected'} across all days`, 'success');
+    await fetchSlots();
+  }
+  if(warnings.length) showToast(warnings[0], 'error');
+  if(errors.length) showToast(`${errors.length} session(s) failed: ${errors[0]}`, 'error');
 }
 
-async function rejectAllPending() {
-  const pendingSessionIds = [...new Set(allSlots.filter(s => s.is_pending && s.session_id).map(s => s.session_id))];
-  for (const sid of pendingSessionIds) {
-    try {
-      await fetch(window.API_BASE_URL + '/api/chat/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid }),
-        credentials: 'include'
-      });
-    } catch (e) { /* continue */ }
-  }
-  showToast('All pending blocks removed', 'info');
-  fetchSlots();
-}
+async function acceptAllPending(){ await decideAllPending('confirm'); }
+async function rejectAllPending(){ await decideAllPending('reject'); }
 
 aiSendBtn.addEventListener('click', sendAiMessage);
 aiPrompt.addEventListener('keydown', e => {
@@ -3281,7 +3527,7 @@ const gcalConnBtn = document.getElementById('gcal-conn-btn');
 async function checkGcalStatus() {
   try {
     const res = await fetch(window.API_BASE_URL + '/api/google/status', { credentials: 'include' });
-    if(res.status === 401){ window.location.href = 'landing.html'; return; }
+    if(res.status === 401){ window.location.href = window.LOGIN_URL; return; }
     if(!res.ok) return;
     const data = await res.json();
     if(data.connected) {
@@ -3291,7 +3537,7 @@ async function checkGcalStatus() {
       gcalConnBtn.style.borderColor = 'rgba(255,92,122,.3)';
       gcalConnBtn.onclick = async () => {
         const logoutRes = await fetch(window.API_BASE_URL + '/api/google/oauth/logout', {method: 'POST', credentials: 'include'});
-        if(logoutRes.status === 401){ window.location.href = 'landing.html'; return; }
+        if(logoutRes.status === 401){ window.location.href = window.LOGIN_URL; return; }
         checkGcalStatus();
         fetchSlots();
       };
@@ -3301,10 +3547,10 @@ async function checkGcalStatus() {
       gcalConnBtn.style.color = 'var(--text)';
       gcalConnBtn.style.borderColor = 'var(--border)';
       gcalConnBtn.onclick = () => {
-         window.open('/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
+         window.open(window.API_BASE_URL + '/api/google/oauth/login', 'Google Auth', 'width=500,height=600');
          const poll = setInterval(async () => {
     const res = await fetch(window.API_BASE_URL + '/api/google/status', { credentials: 'include' });
-           if(res.status === 401){ clearInterval(poll); window.location.href = 'landing.html'; return; }
+           if(res.status === 401){ clearInterval(poll); window.location.href = window.LOGIN_URL; return; }
            if(!res.ok) return;
            const pollingData = await res.json();
            if(pollingData.connected) {
@@ -3320,6 +3566,7 @@ async function checkGcalStatus() {
 
 buildGrid();
 async function startAuthenticatedApp(){
+  defaultAiStart();
   await loadPresets();
   setDate(currentDate);
   scrollToCurrent();
@@ -3332,8 +3579,8 @@ async function startAuthenticatedApp(){
       showAiGreeting(messages);
     }
   }
-  // Auto-open AI Planner panel
-  if (!aiChatPanel.classList.contains('open')) {
+  // Open by default; respect the user's previous choice.
+  if (localStorage.getItem('ai-panel-open') !== 'false' && !aiChatPanel.classList.contains('open')) {
     aiChatPanel.classList.add('open');
     updateAiBtnStyle();
   }

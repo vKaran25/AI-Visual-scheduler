@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 REQUEST_TIMEOUT = 30
 
 
+class LLMProviderError(RuntimeError):
+    """Neither configured chat provider could produce a response."""
+
+
 def _call_nvidia_nim(messages: list[dict], response_format: dict | None = None, temperature: float = 0.2) -> str:
     if not NVIDIA_API_KEY:
         raise ValueError("NVIDIA_API_KEY is required")
@@ -69,5 +73,9 @@ def chat_completion(messages: list[dict], provider: str = "nvidia_nim", response
         logger.warning("NVIDIA NIM failed (%s), falling back to Groq", nim_exc)
         try:
             return _call_groq(messages, response_format, temperature)
-        except Exception:
-            raise nim_exc
+        except Exception as groq_exc:
+            logger.error("Groq fallback failed (%s)", groq_exc)
+            raise LLMProviderError(
+                f"Scheduling AI unavailable: NVIDIA NIM failed ({nim_exc}); "
+                f"Groq failed ({groq_exc})"
+            ) from groq_exc

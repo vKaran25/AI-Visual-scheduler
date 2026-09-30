@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+
 from sqlmodel import Session
 
 from app.db.models import User
@@ -51,16 +52,19 @@ def detect_conflicts(session: Session, user: User, start_date: str, end_date: st
     return conflicts
 
 
-def commit_pending_plan(session: Session, user: User, session_id: str) -> list[dict]:
+def commit_pending_plan(session: Session, user: User, session_id: str) -> tuple[list[dict], list[str]]:
     gcal_connected = calendar_service.get_gcal_credentials(user) is not None
-    blocks = scheduler_service.accept_pending_slots(session, user, session_id, mark_as_gcal=gcal_connected)
+    # Confirmed plans remain local even if Google export fails or is disconnected.
+    blocks = scheduler_service.accept_pending_slots(session, user, session_id, mark_as_gcal=False)
+    failures = []
     if gcal_connected:
         for block in blocks:
             try:
-                calendar_service.insert_calendar_event(user, block)
-            except Exception as exc:
-                print(f"GCal insert failed for block {block.id}: {exc}")
-    return [scheduler_service.block_to_dict(block) for block in blocks]
+                if not calendar_service.insert_calendar_event(user, block):
+                    failures.append(str(block.id))
+            except Exception:
+                failures.append(str(block.id))
+    return [scheduler_service.block_to_dict(block) for block in blocks], failures
 
 
 def reject_pending_plan(session: Session, user: User, session_id: str) -> None:
