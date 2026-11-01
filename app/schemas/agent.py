@@ -1,25 +1,29 @@
-import math
-
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentChatRequest(BaseModel):
-    prompt: str
+    model_config = ConfigDict(extra="forbid")
+    prompt: str = Field(min_length=1, max_length=12000)
     start_after: str | None = None
-    slack: float = 0.0
-    session_id: str | None = None   # Omit to start a NEW session; pass to CONTINUE an existing one
-
-    @field_validator("slack")
-    @classmethod
-    def validate_slack(cls, value: float) -> float:
-        if not math.isfinite(value) or value < 0:
-            raise ValueError("slack must be a finite non-negative number")
-        return value
+    slack: float = Field(default=0, ge=0, le=2, allow_inf_nan=False)
+    session_id: str | None = None
+    request_id: str | None = Field(default=None, max_length=128)
 
 
 class AgentDecisionRequest(BaseModel):
     session_id: str
-    draft_id: str | None = None
+    draft_id: str
+    revision: str
+
+
+class ResumeRequest(BaseModel):
+    interrupt_id: str
+    response: str = Field(min_length=1, max_length=12000)
+    request_id: str = Field(min_length=1, max_length=128)
+
+
+class MemoryDecisionRequest(BaseModel):
+    accept: bool
 
 
 class SessionSummary(BaseModel):

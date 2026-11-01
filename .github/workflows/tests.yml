@@ -1,0 +1,47 @@
+name: Verify
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: scheduler
+          POSTGRES_PASSWORD: scheduler
+          POSTGRES_DB: scheduler_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U scheduler" --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://scheduler:scheduler@127.0.0.1:5432/scheduler_test
+      DATABASE_URL: postgresql+psycopg://scheduler:scheduler@127.0.0.1:5432/scheduler_test
+      DATABASE_DIRECT_URL: postgresql+psycopg://scheduler:scheduler@127.0.0.1:5432/scheduler_test
+      JWT_SECRET_KEY: ci-only-secret-key-with-more-than-thirty-two-bytes
+      APP_BASE_URL: http://127.0.0.1:8000
+      CORS_ORIGINS: http://127.0.0.1:8000
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+      BROWSER_CHANNEL: chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements-dev.txt -c requirements.lock
+      - run: ruff check app tests migrations
+      - run: ruff format --check app tests migrations
+      - run: python -m pytest -q
+      - run: alembic check
+      - run: python -m app.evaluations
+      - run: python -m playwright install --with-deps chromium
+      - name: Start browser preview
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/predestination.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+      - run: python tests/browser_smoke.py --base-url http://127.0.0.1:8000

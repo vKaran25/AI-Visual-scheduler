@@ -1,212 +1,84 @@
-# Predestination - AI Visual Scheduler
+# Predestination — durable AI calendar
 
-Predestination is a FastAPI visual scheduler with user accounts, database-backed blocks, reusable presets, Google Calendar availability import, and an agent that drafts study plans powered by **NVIDIA NIM** with **Groq** fallback. Confirmed plans are saved locally and exported to Google when connected; editing/deleting local blocks does not edit Google events.
+Predestination combines a LangGraph orchestrator and specialist workers with a bounded evaluator–optimizer loop. PostgreSQL stores calendar records, approvals, jobs, graph checkpoints, and Google synchronization state.
 
-The project is intentionally educational: agents are plain Python classes, scheduler tools are normal functions, and all user data is strictly scoped by `user_id`.
+## Start locally
 
-## Quick Start
+Use Python 3.12 and PostgreSQL 16 or later. No SQLite fallback or data import is performed.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate        # macOS/Linux
-.venv\Scripts\activate           # Windows
-pip install -r requirements.txt
-cp .env.example .env
-python app.py
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -c requirements.lock
+Copy-Item .env.example .env
 ```
 
-Open `http://127.0.0.1:8000/home` to sign in, or `http://127.0.0.1:8000/` for the planner. Serve the frontend through FastAPI for same-origin local API requests; opening the HTML files directly requires the API on port 8000 and a browser that permits that origin.
+Configure `DATABASE_URL`, `DATABASE_DIRECT_URL`, and a private `JWT_SECRET_KEY` in `.env`. Then:
 
-## Environment
-
-Required for local auth/database:
-
-```env
-DATABASE_URL=sqlite:///./data/scheduler.db
-JWT_SECRET_KEY=change_me_to_a_long_random_secret
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-COOKIE_SECURE=false
-CORS_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
-APP_BASE_URL=http://127.0.0.1:8000
+```powershell
+.\.venv\Scripts\python.exe -m app.db.migrate
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Required for agents (Dual-Provider with Groq Fallback):
+In a second terminal:
 
-```env
-# Primary LLM: NVIDIA NIM
-NVIDIA_API_KEY=your_nvidia_key
-NVIDIA_NIM_MODEL=openai/gpt-oss-120b
-NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1
-
-# Fallback LLM: Groq (auto-triggered if NVIDIA NIM fails)
-GROQ_API_KEY=your_groq_key
-GROQ_MODEL=llama-3.3-70b-versatile
-GROQ_BASE_URL=https://api.groq.com/openai/v1
+```powershell
+.\.venv\Scripts\python.exe -m app.runtime.worker
 ```
 
-Required for Google Calendar:
+Open [the sign-in page](http://127.0.0.1:8000/home). Confirm the calendar timezone before planning. Manual scheduling works without a model key; the assistant needs `OPENROUTER_API_KEY`.
 
-```env
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_OAUTH_REDIRECT_URI=
-GOOGLE_TOKEN_DIR=
-GOOGLE_MANAGED_CALENDAR_NAME=Predestination
-GOOGLE_CALENDAR_TIMEZONE=UTC
-```
+For a Docker-based local PostgreSQL setup, copy `.env.example` to `.env` and run `docker compose up --build`. The migration service runs before the API and worker.
 
-## Main Features
+## What the assistant does
 
-### Core Scheduling & Calendar
-- **User Authentication**: Email/password signup and login with secure HttpOnly auth cookies.
-- **Database-Backed Schedule Blocks**: User-owned slots stored locally in SQLite or in production PostgreSQL (`psycopg2-binary`).
-- **Conflict Prevention**: Overlap detection across manual blocks, presets, and pending plans; pending plans are checked again at confirmation. A task must fit contiguously on its planned day or the draft returns an error without saving a partial plan.
-- **Free-Time Search**: Automatic gap finder snapping to 30-minute intervals and ignoring unfeasible fragments.
-- **Calendar Presets**: Built-in templates (Blank, Student, Exam Prep, Working Professional, Fitness + Study) and persistent custom presets.
-- **Preset Bulk Removal**: One-click cleanup route to purge all blocks created by a specific preset.
-- **Google Calendar Import + Plan Export**: Imports timed and all-day availability from primary and managed calendars and exports confirmed AI plans to the managed calendar. Local edit/delete is not propagated to Google. Choose `GOOGLE_CALENDAR_TIMEZONE` to match the schedule's intended IANA time zone; a per-user timezone is not implemented.
+- Creates study plans and event proposals, answers availability questions, and proposes edits, deletions, and preset operations.
+- Asks about missing times, AM/PM, durations, or planning availability.
+- Evaluates complex proposals and repairs affected tasks within fixed limits.
+- Saves calendar changes only after approval of the exact draft revision.
+- Keeps drafts separate from confirmed availability.
+- Suggests reusable preferences and waits for consent to remember them.
+- Imports Google busy time and synchronizes app-created events through an outbox.
+- Preserves month/week/day views, both visual styles, light/dark modes, manual forms, and the collapsible tools panel.
 
-### Agent Architecture & Reliability
-- **Dual LLM Provider with Auto-Fallback**: Primary inference on NVIDIA NIM (`openai/gpt-oss-120b`) with seamless, automatic failover to Groq (`llama-3.3-70b-versatile`).
-- **Scoped Dual-Memory System**:
-  - `pref` (Permanent Preferences): User habits (wake time, session lengths, unavailable days) stored globally and reused across all sessions.
-  - `fact` (Session-Scoped Facts): Specific study targets, deadlines, and task constraints isolated to the current planning session so plans never cross-contaminate.
-- **Dynamic 14-Day Calendar Snapshots**: Fresh snapshot of confirmed calendar blocks injected into new agent sessions so the assistant is aware of existing commitments.
-- **Web Knowledge Injection**: Pure-Python DuckDuckGo search, URL scraping, and content summarization for time-management context and domain tips.
-- **Interactive Multi-Session Management**: Auto-names sessions from user prompts, logs start/finish timestamps (`last_accessed_at`, `finished_at`), and supports multi-session history switching.
-- **Buffer / Slack Factor**: Configurable `slack` parameter (e.g. 10–20% buffer) to pad estimated study durations realistically.
-
-### Modern Frontend & UX
-- **Interactive 3D Landing Page** (`/home`): Modern welcome experience with perspective 3D canvas animation, dynamic schedule previews, and auth modal.
-- **Guided Planner Workflow**: Step indicators walking users through Step 1 (Base schedule), Step 2 (Study goal), and Step 3 (Review & commit).
-- **Click-to-Navigate**: Clicking scheduled review blocks jumps directly to that date on the calendar with smooth highlighting.
-- **Bulk Pending Actions**: Accept or reject entire pending sessions, including blocks on days beyond the one currently displayed.
-- **Day Summary Stats**: Live day-by-day calculation of total scheduled hours and minutes.
-- **Enhanced Visuals**: Redesigned busy blocks, hover effects, 390px expandable sidebar, and theme switcher (Dark/Light).
-
-## Agent Architecture
-
-The agent pipeline executes in **2 LLM calls per message** (optimized by combining fact extraction with intent classification):
-
-```text
-User message
-  │
-  ▼
-TriageAgent (1 LLM call)
-  ├─ extracts new global preferences ("prefs") & session facts ("facts")
-  └─ classifies intent: plan / clarify / chat
-  │
-  ▼
-Response agent (1 LLM call)
-  ├─ ChatAgent     → brief scheduling-focused reply (with DuckDuckGo Web Knowledge search/scrape/summarize)
-  ├─ ClarifyAgent  → polite follow-up questions (never re-asks answered questions)
-  └─ PlannerAgent  → structured JSON roadmap respecting duration & constraints
-        │
-        ▼ (pure Python, deterministic)
-      SchedulerAgent → fits tasks into free calendar slots (with optional slack factor)
-      ConflictAgent  → detects overlaps against existing blocks
-      ReviewAgent    → compiles day-by-day roadmap summary for user review
-```
-
-* **LLM Resilience**: If the NVIDIA NIM call fails or encounters network/rate limits, the request automatically falls back to Groq LLaMA 3.3 70B without disrupting the user flow.
-- **Review & Confirmation**: Blocks generated by the agent are staged as `is_pending=True`. The user can review them, confirm them locally (with optional Google export), or reject them. If export fails, confirmation succeeds locally and returns a warning listing the affected block IDs. Replanning replaces the pending draft in that session.
-
-## Project Structure
+## Repository map
 
 ```text
 app/
-  agent/        Web Knowledge agent (DuckDuckGo search, web scraper, chunk summarizer, orchestrator)
-  agents/       Multi-step roadmap pipeline (TriageAgent, ChatAgent, ClarifyAgent, PlannerAgent, etc.)
-  api/          FastAPI route endpoints (auth, scheduler, presets, memory, agents, google, evals)
-  core/         App settings and environment configuration
-  db/           SQLModel database engine, tables, and auto-migration runner
-  schemas/      Pydantic request/response models
-  services/     LLM client (NIM + Groq), memory, scheduler, auth, presets, calendar, evals
+  agents/          LangGraph, specialist subgraph, prompts, state, context
+  api/             Authenticated HTTP endpoints
+  core/            Environment configuration
+  db/              PostgreSQL records, sessions, transactions, migration command
+  domain/          Typed contracts, interval arithmetic, timezone logic, OR-Tools
+  evaluations/     Offline checks and labeled live evaluator benchmark
+  integrations/    OpenRouter, bounded web research, Google OAuth/synchronization
+  runtime/         Durable worker, leases, budgets, fenced checkpoints
+  schemas/         Public API contracts
+  services/        Calendar/preset commands, drafts, memory, runs, outbox
 frontend/
-  index.html    Single-page visual scheduler application with guided UX and dark/light mode
-  landing.html  Welcome landing page with 3D canvas perspective animation and auth modal
-tests/          API and service unit tests (isolated SQLite & mocked LLM)
-app.py          Local development runner
-render.yaml     Render deployment blueprint (FastAPI backend on free tier)
-netlify.toml    Netlify deployment configuration (Frontend static hosting + SPA rewrites)
+  index.html       Planner markup
+  landing.html     Sign-in and welcome markup
+  assets/css/      Extracted planner, calendar, and landing styles
+  assets/js/       Bootstrap, planner, calendar, durable agent UI, landing animation
+migrations/        Reviewed, versioned Alembic schema revisions
+tests/             Domain, PostgreSQL, graph recovery, integration, frontend checks
+docs/              Architecture, API, migration and deployment instructions
 ```
 
-## API Surface
+## Verification
 
-### App & General
-- `GET /health` — Service health check
-- `GET /` — Serves the visual scheduler application (`frontend/index.html`)
-- `GET /home` — Serves the welcome landing page (`frontend/landing.html`)
+Use a separate database whose name ends with `_test`; tests truncate application tables in that database.
 
-### Authentication (`/api/auth`)
-- `POST /api/auth/signup` — Create user account
-- `POST /api/auth/login` — Authenticate and set HttpOnly session cookie
-- `POST /api/auth/logout` — Invalidate session and clear auth cookie
-- `GET /api/me` — Current authenticated user profile
-
-### Scheduler & Blocks (`/api`)
-- `GET /api/slots` — Get scheduled blocks for a given date
-- `POST /api/slots` — Create a new schedule block
-- `PUT /api/slots/{slot_id}` — Update an existing block
-- `DELETE /api/slots/{slot_id}` — Delete a schedule block
-- `GET /api/free` — Find free time blocks from a start timestamp
-
-### Presets (`/api`)
-- `GET /api/presets` — List built-in and user custom presets
-- `POST /api/presets/{preset_id}/apply` — Apply a preset to the schedule
-- `DELETE /api/presets/{preset_id}/remove` — Remove all blocks associated with a preset
-- `POST /api/custom-presets` — Create a custom preset
-- `PUT /api/custom-presets/{preset_id}` — Update a custom preset
-- `DELETE /api/custom-presets/{preset_id}` — Delete a custom preset
-
-### AI Agents & Sessions (`/api/agent`)
-- `POST /api/agent/chat` — Send a prompt to the agent pipeline (supports `start_after`, `slack`, `session_id`)
-- `POST /api/agent/confirm` — Commit pending plan blocks to permanent schedule
-- `POST /api/agent/reject` — Discard pending plan blocks
-- `POST /api/agent/new-session` — Create a fresh planning session with a 14-day calendar snapshot
-- `GET /api/agent/sessions` — List user's historical planning sessions with timestamps and status
-- `GET /api/agent/sessions/{session_id}/messages` — Restore the latest 200 messages, oldest to newest, for a session owned by the user
-
-### Memory Management (`/api/memory`)
-- `GET /api/memory` — List all user memories
-- `POST /api/memory` — Create a global `pref` (also accepts legacy `preference`) or a session-scoped `fact` (requires an owned `chat_session_id`)
-- `DELETE /api/memory/{memory_id}` — Delete a specific memory item
-
-### Google Calendar Integration (`/api/google`)
-- `GET /api/google/status` — Check Google account sync status
-- `GET /api/google/oauth/login` — Initiate Google OAuth 2.0 flow
-- `GET /api/google/oauth/callback` — Handle Google OAuth callback
-- `POST /api/google/oauth/logout` — Disconnect Google Calendar integration
-
-### Workflow Evaluations (`/api/evals`)
-- `GET /api/evals/runs` — List recorded evaluation runs
-- `POST /api/evals/run` — Save an evaluation benchmark run
-
-## Testing
-
-```bash
-python -m pytest
+```powershell
+$env:TEST_DATABASE_URL='postgresql+psycopg://USER:PASSWORD@HOST/scheduler_test?sslmode=require'
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\ruff.exe check app tests migrations
+.\.venv\Scripts\python.exe -m app.evaluations
 ```
 
-Tests run against isolated SQLite databases with mocked Google and LLM calls. Frontend regression tests exercise the served inline JavaScript with Node.js; they skip if Node.js is not installed. Browser-based auth, third-party cookie behavior, Google OAuth, and live model responses require separate smoke testing.
+The graph tests run the actual LangGraph and PostgreSQL checkpointer with mocked inference. Live OpenRouter and Google checks need configured credentials and are separate from offline verification.
 
-## Deployment
-
-### 1. Render (Backend API)
-The backend is configured for deployment on [Render](https://render.com) using [`render.yaml`](render.yaml):
-- Configure `DATABASE_URL` to a **persistent** database and set `APP_BASE_URL` to the public API URL; keep `JWT_SECRET_KEY` private and stable across restarts. Existing databases use recorded, idempotent schema upgrades on startup. Back up production data before upgrading.
-- Set `COOKIE_SECURE=true` for HTTPS (`SameSite=None`), set `CORS_ORIGINS` to the exact frontend origin, and set `GOOGLE_CALENDAR_TIMEZONE` to the intended IANA timezone (for example `Asia/Kolkata`). Cross-site cookies may be blocked by some browsers; if so, deploy the frontend and API on the same site or use a same-origin proxy.
-- Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI` and, if using Google in production, keep `GOOGLE_TOKEN_DIR` on private persistent storage. A free/ephemeral filesystem loses connected Google accounts on redeploy; token files contain sensitive credentials. No live Google OAuth check runs as part of automated tests.
-
-### 2. Netlify (Frontend)
-The frontend is configured for deployment on [Netlify](https://www.netlify.com) using [`netlify.toml`](netlify.toml):
-- Publishes `frontend/` with an SPA redirect. The default `.netlify.app` frontend calls `https://predestination.onrender.com`; custom domains need a matching API URL in the frontend bootstrap script and an entry in `CORS_ORIGINS`.
-- Cookies set on the Render API are third-party cookies from Netlify. Test login in the browsers you support; a successful login response does not guarantee the browser stored the cookie.
-
-### 3. Docker (Self-Hosted)
-```bash
-docker build -t predestination .
-docker run --env-file .env -v predestination-data:/app/data -p 8000:8000 predestination
-```
-
-Use a persistent external database for production. The volume preserves the default SQLite DB and Google token directory for local Docker use. Logging out clears the browser cookie; it does not revoke a copied JWT before its expiration. Google import currently skips editing/deleting remote events from local block changes, and the legacy `frontend/app.js` file is not loaded by `index.html` (the live planner script is inline).
+- [Architecture and agent contracts](docs/architecture.md)
+- [API and UI contracts](docs/api.md)
+- [Database migration tutorial](docs/database.md)
+- [Deployment and operations](docs/deployment.md)

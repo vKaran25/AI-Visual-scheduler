@@ -16,4 +16,3 @@ class FreeBlocksResponse(BaseModel):
     requested: float
     fulfilled: bool
     missing: float
-

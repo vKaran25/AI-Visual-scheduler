@@ -1,0 +1,6 @@
+[
+  {"name":"complete-study-plan","expected_accept":true,"request":"Plan one hour of Python: introduction followed by practice, with sources only if research was used.","candidate":{"tasks":[{"title":"Read Python function syntax and write two example functions","duration_minutes":30},{"title":"Solve three function exercises and check the outputs","duration_minutes":30}],"total_minutes":60,"sources":[]}},
+  {"name":"wrong-total","expected_accept":false,"request":"Plan exactly 60 minutes of study.","candidate":{"tasks":[{"title":"Read examples","duration_minutes":90}],"total_minutes":90,"sources":[]}},
+  {"name":"missing-practice","expected_accept":false,"request":"Plan one hour split equally between reading and hands-on Python exercises.","candidate":{"tasks":[{"title":"Read Python documentation","duration_minutes":60}],"total_minutes":60,"sources":[]}},
+  {"name":"invented-source","expected_accept":false,"request":"Explain the current recommendation with a retrieved source.","candidate":{"answer":"According to a retrieved official source, this is the best approach: https://example.invalid/fake","sources":[]}}
+]

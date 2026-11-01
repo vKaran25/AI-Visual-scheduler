@@ -14,7 +14,9 @@ def list_runs(session: Session = Depends(get_session), user: User = Depends(auth
 
 
 @router.post("/run")
-def create_run(data: dict, session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)):
+def create_run(
+    data: dict, session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)
+):
     return eval_service.create_eval_run(
         session,
         user,
@@ -25,3 +27,9 @@ def create_run(data: dict, session: Session = Depends(get_session), user: User =
         metrics=data.get("metrics", {}),
     )
 
+
+@router.get("/metrics")
+def metrics(session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)):
+    from app.services.metrics_service import summary
+
+    return summary(session, user)

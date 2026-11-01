@@ -3,9 +3,16 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends, HTTPException, Request, Response
 from pwdlib import PasswordHash
+from pwdlib.exceptions import UnknownHashError
 from sqlmodel import Session, select
 
-from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SAMESITE, COOKIE_SECURE, JWT_ALGORITHM, JWT_SECRET_KEY
+from app.core.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+    JWT_ALGORITHM,
+    JWT_SECRET_KEY,
+)
 from app.db.models import User
 from app.db.session import get_session
 
@@ -18,7 +25,10 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    return password_hash.verify(password, hashed_password)
+    try:
+        return password_hash.verify(password, hashed_password)
+    except UnknownHashError:
+        return False
 
 
 def create_access_token(user_id: int) -> str:

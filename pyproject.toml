@@ -1,0 +1,19 @@
+[project]
+name = "predestination"
+version = "2.0.0"
+requires-python = ">=3.12,<3.15"
+description = "Durable calendar assistant with LangGraph and PostgreSQL"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:langsmith_plugin"
+markers = ["postgres: requires a dedicated PostgreSQL test database"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["E712"]

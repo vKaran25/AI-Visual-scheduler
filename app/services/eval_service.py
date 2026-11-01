@@ -5,7 +5,15 @@ from sqlmodel import Session, select
 from app.db.models import EvalRun, User
 
 
-def create_eval_run(session: Session, user: User | None, name: str, input_prompt: str = "", expected=None, result=None, metrics=None) -> EvalRun:
+def create_eval_run(
+    session: Session,
+    user: User | None,
+    name: str,
+    input_prompt: str = "",
+    expected=None,
+    result=None,
+    metrics=None,
+) -> EvalRun:
     run = EvalRun(
         user_id=user.id if user else None,
         name=name,
@@ -22,6 +30,9 @@ def create_eval_run(session: Session, user: User | None, name: str, input_prompt
 
 def list_eval_runs(session: Session, user: User | None) -> list[EvalRun]:
     if user:
-        return list(session.exec(select(EvalRun).where(EvalRun.user_id == user.id).order_by(EvalRun.created_at.desc())).all())
+        return list(
+            session.exec(
+                select(EvalRun).where(EvalRun.user_id == user.id).order_by(EvalRun.created_at.desc())
+            ).all()
+        )
     return list(session.exec(select(EvalRun).order_by(EvalRun.created_at.desc())).all())
-

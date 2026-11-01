@@ -5,10 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import agent, auth, evals, google, memory, presets, scheduler
-from app.core.config import APP_BASE_URL, CORS_ORIGINS
-from app.db.session import create_db_and_tables
+from app.core.config import APP_BASE_URL, COOKIE_SECURE, CORS_ORIGINS, JWT_SECRET_KEY
+from app.db.session import verify_schema
 
 if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -16,7 +17,9 @@ if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
+    if COOKIE_SECURE and JWT_SECRET_KEY == "local-development-only-change-before-deployment":
+        raise RuntimeError("Set a private JWT_SECRET_KEY before HTTPS deployment")
+    verify_schema()
     yield
 
 
@@ -32,6 +35,7 @@ app.add_middleware(
 ROOT_DIR = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT_DIR / "frontend" / "index.html"
 LANDING_PATH = ROOT_DIR / "frontend" / "landing.html"
+app.mount("/assets", StaticFiles(directory=ROOT_DIR / "frontend" / "assets"), name="assets")
 
 
 @app.exception_handler(HTTPException)
@@ -61,3 +65,19 @@ app.include_router(memory.router)
 app.include_router(agent.router)
 app.include_router(google.router)
 app.include_router(evals.router)
+
+
+@app.middleware("http")
+async def authenticated_cache_and_origin(request: Request, call_next):
+    origin = request.headers.get("origin")
+    if (
+        request.url.path.startswith("/api/")
+        and request.method in ("POST", "PUT", "PATCH", "DELETE")
+        and origin
+        and origin.rstrip("/") not in CORS_ORIGINS
+    ):
+        return JSONResponse({"error": "Untrusted request origin"}, status_code=403)
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response

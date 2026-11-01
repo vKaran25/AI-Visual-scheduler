@@ -1,59 +1,37 @@
-from pathlib import Path
+"""PostgreSQL units of work. Schema changes run through app.db.migrate."""
+
 from typing import Generator
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import inspect
+from sqlmodel import Session, create_engine
 
-from app.core.config import DATABASE_URL
+from app.core.config import DATABASE_URL, psycopg_url
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-if DATABASE_URL.startswith("sqlite:///"):
-    sqlite_path = Path(DATABASE_URL.replace("sqlite:///", ""))
-    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
-
-engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
-
-
-def _run_migrations() -> None:
-    """Apply idempotent, recorded upgrades; surface unexpected DDL failures."""
-    from sqlalchemy import inspect, text
-
-    with engine.begin() as conn:
-        conn.execute(text("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)"))
-        applied = set(conn.execute(text("SELECT version FROM schema_migrations")).scalars())
-        if 1 not in applied:
-            columns = [
-                ("memory", "chat_session_id", "TEXT"),
-                ("agentsession", "title", "TEXT NOT NULL DEFAULT ''"),
-                ("agentsession", "calendar_snapshot", "TEXT NOT NULL DEFAULT ''"),
-                ("agentsession", "last_accessed_at", "TIMESTAMP"),
-                ("agentsession", "finished_at", "TIMESTAMP"),
-            ]
-            known = {}
-            for table, col, definition in columns:
-                if table not in known:
-                    known[table] = {item["name"] for item in inspect(conn).get_columns(table)}
-                if col not in known[table]:
-                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {definition}"))
-                    known[table].add(col)
-            conn.execute(text("INSERT INTO schema_migrations (version) VALUES (1)"))
-        if 2 not in applied:
-            conn.execute(text("UPDATE memory SET type = 'pref' WHERE type = 'preference'"))
-            conn.execute(text("INSERT INTO schema_migrations (version) VALUES (2)"))
-        if 3 not in applied:
-            existing = {item["name"] for item in inspect(conn).get_columns("agentsession")}
-            if "draft_revision" not in existing:
-                conn.execute(text("ALTER TABLE agentsession ADD COLUMN draft_revision TEXT"))
-            conn.execute(text("INSERT INTO schema_migrations (version) VALUES (3)"))
+engine = create_engine(
+    psycopg_url(DATABASE_URL),
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=2,
+    connect_args={"connect_timeout": 10},
+)
 
 
-def create_db_and_tables() -> None:
-    import app.db.models  # noqa: F401
+def verify_schema() -> None:
+    if not inspect(engine).has_table("alembic_version"):
+        raise RuntimeError("Database is not initialized. Run: python -m app.db.migrate")
+    from alembic.config import Config
+    from alembic.migration import MigrationContext
+    from alembic.script import ScriptDirectory
 
-    SQLModel.metadata.create_all(engine)
-    _run_migrations()
+    from app.core.config import BASE_DIR
+
+    expected = ScriptDirectory.from_config(Config(str(BASE_DIR / "alembic.ini"))).get_current_head()
+    with engine.connect() as connection:
+        actual = MigrationContext.configure(connection).get_current_revision()
+    if actual != expected or not inspect(engine).has_table("checkpoints"):
+        raise RuntimeError("Database schema is out of date. Run: python -m app.db.migrate")
 
 
 def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         yield session
-

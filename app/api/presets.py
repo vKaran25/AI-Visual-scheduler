@@ -10,7 +10,9 @@ router = APIRouter(prefix="/api", tags=["presets"])
 
 
 @router.get("/presets")
-def list_presets(session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)):
+def list_presets(
+    session: Session = Depends(get_session), user: User = Depends(auth_service.get_current_user)
+):
     return preset_service.list_presets(session, user)
 
 
@@ -44,7 +46,9 @@ def update_custom_preset(
     session: Session = Depends(get_session),
     user: User = Depends(auth_service.get_current_user),
 ):
-    preset = preset_service.update_custom_preset(session, user, preset_id, data.name, data.description, data.blocks)
+    preset = preset_service.update_custom_preset(
+        session, user, preset_id, data.name, data.description, data.blocks
+    )
     if not preset:
         raise HTTPException(status_code=404, detail="Preset not found")
     return {"id": preset.id, "name": preset.name, "description": preset.description}

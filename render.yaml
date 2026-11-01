@@ -1,40 +1,54 @@
-services:
-  - type: web
-    name: predestination
-    plan: free
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+envVarGroups:
+  - name: predestination
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: "60"
+      - key: GOOGLE_TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_WORKER_MODEL
+        value: nvidia/nemotron-3-super-120b-a12b:free
+      - key: OPENROUTER_EVALUATOR_MODEL
+        value: xingchen-agi/xing4.0-29b-a4b:free
       - key: COOKIE_SECURE
         value: "true"
+      - key: LANGGRAPH_STRICT_MSGPACK
+        value: "true"
+      - key: APP_BASE_URL
+        value: https://predestinationai.netlify.app
       - key: CORS_ORIGINS
         value: https://predestinationai.netlify.app
-      - key: GOOGLE_CALENDAR_TIMEZONE
-        value: UTC
-      - key: APP_BASE_URL
-        sync: false
-      - key: NVIDIA_API_KEY
-        sync: false
-      - key: NVIDIA_NIM_MODEL
-        value: openai/gpt-oss-120b
-      - key: NVIDIA_NIM_BASE_URL
-        value: https://integrate.api.nvidia.com/v1
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        value: https://predestinationai.netlify.app/api/google/oauth/callback
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: GOOGLE_OAUTH_REDIRECT_URI
-        sync: false
-      - key: GOOGLE_MANAGED_CALENDAR_NAME
-        value: Predestination
+services:
+  - type: web
+    name: predestination
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt -c requirements.lock
+    preDeployCommand: python -m app.db.migrate
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: predestination
+      - key: PYTHON_VERSION
+        value: "3.12.12"
+  - type: worker
+    name: predestination-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt -c requirements.lock
+    startCommand: python -m app.runtime.worker
+    envVars:
+      - fromGroup: predestination
+      - key: PYTHON_VERSION
+        value: "3.12.12"

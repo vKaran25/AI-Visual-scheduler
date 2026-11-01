@@ -1,2 +1,1 @@
-from app.main import app
-
+"""Predestination. Start the API with uvicorn app.main:app."""

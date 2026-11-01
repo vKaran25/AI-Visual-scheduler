@@ -9,4 +9,3 @@ class CustomPresetRequest(BaseModel):
     name: str
     description: str = ""
     blocks: list[dict] | None = None
-
