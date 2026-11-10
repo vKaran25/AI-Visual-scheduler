@@ -234,7 +234,7 @@ def decide(db: Session, user: User, draft_id: str, revision: str, accept: bool):
             "count": len(draft.operations),
             "sync_status": "queued",
             "saved_event_date": next(
-                (op["event"]["date"] for op in draft.operations if op.get("event", {}).get("date")),
+                (event["date"] for event in checked["preview"]["scheduled"] if event["date"]),
                 None,
             ),
         }
