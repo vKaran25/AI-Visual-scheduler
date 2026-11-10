@@ -119,7 +119,9 @@ def prepare(db: Session, user: User, actions: list[Action]) -> dict:
 
     preview = {
         "changes": [
-            {**op, "event": {**op["event"], "durationMinutes": minutes(op["event"])}} if "event" in op else op
+            {**op, "event": {**op["event"], "durationMinutes": minutes(op["event"])}}
+            if op["kind"] in ("create", "update")
+            else op
             for op in operations
         ],
         "scheduled": scheduled,
