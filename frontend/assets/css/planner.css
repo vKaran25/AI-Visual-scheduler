@@ -1236,15 +1236,19 @@
   }
   .ai-input-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     align-items: flex-end;
   }
   #ai-prompt {
-    flex: 1;
+    flex: 1 1 100%;
     resize: none;
     height: 38px;
     min-height: 38px;
   }
+
+  #ai-voice-status { margin: 0; }
+  #ai-voice-status:empty { display: none; }
 
   .header-user {
     max-width: 160px;

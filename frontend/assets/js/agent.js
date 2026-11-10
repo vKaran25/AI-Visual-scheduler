@@ -1,7 +1,7 @@
 /* Durable assistant UI. All text from models and sources is rendered as text. */
 window.agentUI = (() => {
   let active = null, timer = null, generation = 0;
-  let pendingRequest = null;
+  let pendingRequest = null, deciding = false;
   const terminal = new Set(['completed','failed','cancelled']);
   function uid() { return crypto.randomUUID(); }
   async function request(path, method='GET', body) {
@@ -25,11 +25,14 @@ window.agentUI = (() => {
   function eventText(value) {
     if (!value) return '';
     const repeat = value.repeatDays && value.repeatDays.length ? ' weekly ('+value.repeatDays.join(', ')+')' : '';
-    return (value.label || 'Event')+' · '+(value.date || 'Repeating')+' '+value.start+'–'+value.end+repeat;
+    const clockMinutes = time => Number(time.slice(0,2))*60 + Number(time.slice(3));
+    const minutes = value.durationMinutes ?? (clockMinutes(value.end) - clockMinutes(value.start));
+    const duration = ' · '+minutes+' min';
+    return (value.label || 'Event')+' · '+(value.date || 'Repeating')+' '+value.start+'–'+value.end+repeat+duration+' · '+(value.timezone || currentUser.timezone);
   }
   function preview(container, draft) {
     const heading = document.createElement('strong');
-    heading.textContent='Proposed changes — times are not reserved';
+    heading.textContent='Proposed changes · Not saved';
     const list=document.createElement('ul');
     for (const change of draft.preview.changes || []) {
       const row=document.createElement('li');
@@ -56,6 +59,9 @@ window.agentUI = (() => {
     }
     if (run.status==='completed') {
       label.textContent=run.result.response || 'Completed.';
+      if (run.result.saved_event_date) {
+        box.append(button('View saved event', () => window.calendarUI.showDate(run.result.saved_event_date)));
+      }
       for (const source of run.result.sources || []) {
         try {
           const url=new URL(source.url);
@@ -100,9 +106,10 @@ window.agentUI = (() => {
       timer=setTimeout(()=>poll(id,ticket),3000);
     }
   }
-  async function send(textOverride) {
-    const text=(textOverride || aiPrompt.value).trim();
-    if (!text || aiRequestInFlight || sessionHistoryLoading) return;
+  async function send() {
+    const original=aiPrompt.value;
+    const text=original.trim();
+    if (!text || deciding || aiRequestInFlight || sessionHistoryLoading) return;
     if(pendingRequest) {
       aiRequestInFlight=true;
       try { const recovered=await request(pendingRequest.path,'POST',pendingRequest.body); pendingRequest=null; track(recovered); showToast('Recovered the previous request. Your current text has not been submitted.','info'); }
@@ -124,7 +131,9 @@ window.agentUI = (() => {
           start_after:start || null,slack:Number(slackSlider.value),request_id:uid()}};
       }
       run=await request(pendingRequest.path,'POST',pendingRequest.body);
-      pendingRequest=null; aiPrompt.value=''; track(run);
+      pendingRequest=null;
+      if (aiPrompt.value===original) aiPrompt.value='';
+      track(run);
     } catch(error) {
       if(error.httpStatus) pendingRequest=null;
       userMessage.textContent=text+' — '+error.message;
@@ -133,9 +142,28 @@ window.agentUI = (() => {
     }
   }
   async function decide(run,accept) {
-    const data=await request('/api/agent/'+(accept?'confirm':'reject'),'POST',
-      {session_id:run.session_id,draft_id:run.draft.id,revision:run.draft.revision});
-    track(data);
+    if (active!==run || deciding || aiRequestInFlight || sessionHistoryLoading || pendingRequest) {
+      throw new Error('Wait for the current request or review the latest proposal.');
+    }
+    const box=aiMessages.querySelector('[data-run-id="'+run.run_id+'"]');
+    const controls=[...box.querySelectorAll('button')];
+    const label=box.querySelector('p');
+    const stage=label.textContent;
+    deciding=true;
+    aiSendBtn.disabled=true;
+    controls.forEach(control => { control.disabled=true; });
+    label.textContent=accept ? 'Saving…' : 'Rejecting…';
+    try {
+      track(await request('/api/agent/'+(accept?'confirm':'reject'),'POST',
+        {session_id:run.session_id,draft_id:run.draft.id,revision:run.draft.revision}));
+    } finally {
+      deciding=false;
+      if (active===run) {
+        label.textContent=stage;
+        controls.forEach(control => { control.disabled=false; });
+        aiSendBtn.disabled=false;
+      }
+    }
   }
   async function restore(sessionId) {
     ++generation; clearTimeout(timer); active=null;
@@ -164,19 +192,6 @@ window.agentUI = (() => {
         aiMessages.append(box);
       }
     } catch {}
-  }
-  async function bulk(accept) {
-    const drafts=await request('/api/agent/drafts');
-    if (!drafts.length) { showToast('No drafts waiting for approval.','info'); return; }
-    const review=document.createElement('dialog'); review.className='agent-bulk-review';
-    for (const draft of drafts) preview(review,draft);
-    review.append(button(accept?'Approve these exact changes':'Reject these drafts',async()=>{
-      for (const draft of drafts) await request('/api/agent/'+(accept?'confirm':'reject'),'POST',
-        {session_id:draft.session_id,draft_id:draft.id,revision:draft.revision});
-      review.close(); review.remove(); await fetchSlots();
-      if(currentSessionId) await restore(currentSessionId);
-    }),button('Close',()=>{review.close();review.remove();}));
-    document.body.append(review); review.showModal();
   }
   async function initialize() {
     const bar=document.createElement('div'); bar.className='timezone-control';
@@ -210,8 +225,6 @@ window.agentUI = (() => {
       } catch {}
     },5000);
   }
-  return {send,restore,restoreRun,bulk,initialize, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
+  return {send,restore,restoreRun,initialize, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
 })();
 async function sendAiMessage(){ return window.agentUI.send(); }
-async function acceptAllPending(){ return window.agentUI.bulk(true); }
-async function rejectAllPending(){ return window.agentUI.bulk(false); }

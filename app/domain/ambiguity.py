@@ -6,7 +6,8 @@ import re
 def missing_event_details(request: str, answers: list[str]) -> list[str]:
     text = " ".join([request] + answers)
     missing = []
-    time = re.search(r"\bat\s+(\d{1,2})(?::\d{2})?\b", request, re.I)
+    hours = "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve"
+    time = re.search(rf"\bat\s+(\d{{1,2}}|{hours})(?::\d{{2}})?\b", request, re.I)
     explicit_period = bool(
         re.search(
             r"(?:\b|(?<=\d))(?:[ap]\.?m\.?)(?!\w)"
@@ -15,11 +16,13 @@ def missing_event_details(request: str, answers: list[str]) -> list[str]:
             re.I,
         )
     )
-    if time and 1 <= int(time.group(1)) <= 12 and not explicit_period:
-        missing.append("AM or PM for the event time")
+    if time and not explicit_period:
+        hour = time.group(1)
+        if not hour.isdigit() or 1 <= int(hour) <= 12:
+            missing.append("AM or PM for the event time")
     duration = bool(
         re.search(
-            r"\b(?:\d+(?:\.\d+)?|an?|one|two|three|half)\s*(?:hours?|hrs?|minutes?|mins?|h|m)\b", text, re.I
+            r"\b(?:\d+(?:\.\d+)?|an?|one|two|three|fifteen|twenty|thirty|forty|forty-five|sixty|half)\s*(?:hours?|hrs?|minutes?|mins?|h|m)\b", text, re.I
         )
     )
     time_range = bool(

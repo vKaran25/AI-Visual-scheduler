@@ -261,7 +261,13 @@
     const text = el('quick-text').value.trim();
     if(!text) return;
     openTools('ai');
-    window.agentUI.send(text);
+    if (aiPrompt.value.trim()) {
+      showToast('Finish or clear the current assistant text first. Your quick entry is still here.', 'info');
+      aiPrompt.focus();
+      return;
+    }
+    aiPrompt.value = text;
+    aiPrompt.focus();
     el('quick-text').value = '';
   });
   function cancelQuick() { if (!quickSaving) { dialog.close(); el('quick-text').focus(); } }
@@ -295,6 +301,7 @@
 
   window.calendarUI = {
     setView, toggleTools, openTools, closeTools,
+    showDate(key) { closeTools(); chooseDate(core.fromKey(key)); setView('day'); },
     move(direction) { chooseDate(core.moveDate(currentDate,view,direction)); },
     dateChanged() { updateHeading(); if (loadedRange !== rangeKey()) rangeData = {}; renderCalendar(); refreshRange(); },
     slotsChanged() { if (ready) refreshRange(); },

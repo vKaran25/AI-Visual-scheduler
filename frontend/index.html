@@ -227,7 +227,7 @@
       <div id="ai-sessions-drawer">
         <div id="ai-sessions-list"></div>
       </div>
-      <div id="ai-chat-messages">
+      <div id="ai-chat-messages" role="log" aria-label="Assistant conversation">
         <div id="walkthrough-card" class="ai-msg">
           <div class="ai-welcome">Welcome to AI Planner</div>
           <div class="ai-steps" id="ai-steps">
@@ -260,6 +260,7 @@
         </div>
       </div>
       <div id="ai-chat-input-area">
+        <details><summary>Planning settings</summary>
         <div style="display: flex; gap: 10px; margin-bottom: 6px;">
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
             <label class="form-label" for="ai-start-date">Schedule from</label>
@@ -273,10 +274,15 @@
             <input type="range" id="slack-slider" min="0" max="0.4" step="0.1" value="0.0" style="width: 100%;">
           </div>
         </div>
+        </details>
+        <label class="form-label" for="ai-prompt">Your request</label>
         <div class="ai-input-row">
           <textarea id="ai-prompt" class="form-input" placeholder="e.g. Set up a new GitHub repo over 2 hours..."></textarea>
-          <button id="ai-send-btn" class="btn-primary" style="width: auto; margin:0;">Send</button>
+          <button id="ai-mic" type="button" class="btn-secondary">Record</button>
+          <button id="ai-mic-cancel" type="button" class="btn-secondary" hidden>Cancel recording</button>
+          <button id="ai-send-btn" class="btn-primary" style="width: auto; margin:0;">Review request</button>
         </div>
+        <p id="ai-voice-status" role="status"></p>
       </div>
     </div>
     </section>
@@ -361,5 +367,6 @@
 
 <script src="/assets/js/agent.js"></script>
 <script src="/assets/js/planner.js"></script>
+<script src="/assets/js/voice.js"></script>
 </body>
 </html>

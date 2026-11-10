@@ -456,17 +456,7 @@ function renderSidebar(){
     `;
   }
 
-  // Bulk actions for pending blocks
-  const pendingCount = allSlots.filter(s => s.is_pending).length;
-  if (pendingCount > 0) {
-    html += `
-      <div class="bulk-actions">
-        <button class="btn-primary" data-action="accept-all" title="Accepts entire sessions, including blocks on other days">Accept Sessions (${pendingCount} here)</button>
-        <button class="btn-cancel" data-action="reject-all" title="Rejects entire sessions, including blocks on other days">Reject Sessions</button>
-        <small style="flex-basis:100%;color:var(--text2);">Affects all days in these sessions.</small>
-      </div>
-    `;
-  }
+
 
   if (!allSlots.length) {
     blocksList.innerHTML = html + '<div class="empty-state">No blocks for this day</div>';
@@ -517,15 +507,7 @@ function renderSidebar(){
     });
   });
 
-  // Bulk action event delegation
-  blocksList.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const action = btn.dataset.action;
-      if (action === 'accept-all') acceptAllPending();
-      else if (action === 'reject-all') rejectAllPending();
-    });
-  });
+
 }
 
 function escHtml(s){
@@ -551,6 +533,7 @@ function defaultAiStart(){
 function setDate(d){
   currentDate = new Date(d); currentDate.setHours(0,0,0,0);
   const ds = dateStr(currentDate);
+  if (currentUser) sessionStorage.setItem('predestination:calendar-date:'+currentUser.id, ds);
   dateDisplay.textContent = formatDate(currentDate);
   datePicker.value = ds;
   window.calendarUI?.dateChanged();
@@ -1665,7 +1648,8 @@ buildGrid();
 async function startAuthenticatedApp(){
   defaultAiStart();
   await loadPresets();
-  setDate(currentDate);
+  const savedDate = sessionStorage.getItem('predestination:calendar-date:'+currentUser.id);
+  setDate(window.CalendarCore?.fromKey(savedDate) || currentDate);
   scrollToCurrent();
   await checkGcalStatus();
   await loadSessions();          // pre-populate session history drawer

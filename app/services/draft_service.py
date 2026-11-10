@@ -118,7 +118,12 @@ def prepare(db: Session, user: User, actions: list[Action]) -> dict:
         return last - first
 
     preview = {
-        "changes": operations,
+        "changes": [
+            {**op, "event": {**op["event"], "durationMinutes": minutes(op["event"])}}
+            if "event" in op
+            else op
+            for op in operations
+        ],
         "scheduled": scheduled,
         "num_blocks": len(scheduled),
         "total_hours": round(sum(minutes(b) for b in scheduled) / 60, 2),
@@ -228,6 +233,10 @@ def decide(db: Session, user: User, draft_id: str, revision: str, accept: bool):
             "response": "Approved calendar changes were saved. Google synchronization is queued when connected.",
             "count": len(draft.operations),
             "sync_status": "queued",
+            "saved_event_date": next(
+                (op["event"]["date"] for op in draft.operations if op.get("event", {}).get("date")),
+                None,
+            ),
         }
     db.add(draft)
     db.add(OperationOutcome(key=outcome_key, user_id=user.id, result=result))

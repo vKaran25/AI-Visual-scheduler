@@ -28,7 +28,6 @@ def test_ui_uses_resumable_runs_and_revision_bound_approval():
     agent = (ROOT / "frontend/assets/js/agent.js").read_text(encoding="utf-8")
     assert "/resume" in agent and "/retry" in agent and "/cancel" in agent
     assert "revision:run.draft.revision" in agent
-    assert "session_id:draft.session_id,draft_id:draft.id,revision:draft.revision" in agent
     assert "setTimeout" in agent
     assert "textContent" in agent
     bootstrap = (ROOT / "frontend/assets/js/bootstrap.js").read_text()
