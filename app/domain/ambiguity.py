@@ -22,7 +22,9 @@ def missing_event_details(request: str, answers: list[str]) -> list[str]:
             missing.append("AM or PM for the event time")
     duration = bool(
         re.search(
-            r"\b(?:\d+(?:\.\d+)?|an?|one|two|three|fifteen|twenty|thirty|forty|forty-five|sixty|half)\s*(?:hours?|hrs?|minutes?|mins?|h|m)\b", text, re.I
+            r"\b(?:\d+(?:\.\d+)?|an?|one|two|three|fifteen|twenty|thirty|forty|forty-five|sixty|half)\s*(?:hours?|hrs?|minutes?|mins?|h|m)\b",
+            text,
+            re.I,
         )
     )
     time_range = bool(
