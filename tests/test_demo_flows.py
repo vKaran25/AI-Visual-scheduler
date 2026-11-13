@@ -132,3 +132,38 @@ def test_mcp_server_speaks_the_protocol_over_stdio(db, user):
     assert not proposed.is_error and '"valid": true' in proposed.content[0].text
     assert not created.is_error and '"saved": true' in created.content[0].text
     assert "MCP study" in listed.content[0].text
+
+
+def test_listing_includes_unapproved_assistant_proposals(db, user):
+    """A proposal waiting for approval has no stored duration; listing must still work and mark it unsaved."""
+    from app.db.models import AgentRun, AgentSession, Draft
+
+    conversation = AgentSession(user_id=user.id, prompt="plan")
+    db.add(conversation)
+    db.flush()
+    run = AgentRun(
+        user_id=user.id,
+        session_id=conversation.id,
+        request_id="waiting-run",
+        graph_version="calendar-v1",
+        input={},
+        status="awaiting_approval",
+    )
+    db.add(run)
+    db.flush()
+    event = {"date": DAY, "start": "18:00", "end": "19:30", "label": "Proposed revision", "repeatDays": []}
+    db.add(
+        Draft(
+            user_id=user.id,
+            run_id=run.id,
+            candidate_hash="h",
+            calendar_revision=0,
+            operations=[],
+            preview={"scheduled": [event]},
+        )
+    )
+    db.commit()
+    events = calendar_tools.list_events(db, user, DAY, DAY)["days"][DAY]
+    assert [(e["title"], e["minutes"], e["status"]) for e in events] == [
+        ("Proposed revision", 90, "proposed (not saved)")
+    ]

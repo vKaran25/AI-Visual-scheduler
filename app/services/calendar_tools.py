@@ -72,7 +72,7 @@ def list_events(db, user, start_date: str, end_date: str) -> dict:
                     "title": e["label"],
                     "start": e["start"],
                     "end": e["end"],
-                    "minutes": e["durationMinutes"],
+                    "minutes": e.get("durationMinutes") or (e["endMinutes"] - e["startMinutes"]),
                     "repeats_weekly": bool(e["repeatDays"]),
                     "status": "proposed (not saved)" if e.get("is_pending") else "confirmed",
                 }
