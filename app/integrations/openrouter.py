@@ -1,7 +1,8 @@
-"""Free-only, budgeted structured model calls. No calendar mutation tools."""
+"""Free-only, budgeted structured model calls (OpenRouter or Groq). No calendar mutation tools."""
 
 import copy
 import json
+import logging
 import threading
 import time
 
@@ -11,16 +12,21 @@ from pydantic import ValidationError
 from app.core import config
 from app.runtime import context
 
+logger = logging.getLogger(__name__)
+
 
 class ModelUnavailable(RuntimeError):
     pass
 
 
-_client = httpx.Client(base_url="https://openrouter.ai/api/v1", timeout=30)
+_client = httpx.Client(base_url=config.LLM_BASE_URL, timeout=45)
 _catalog = {}
 _catalog_at = 0
 _catalog_lock = threading.Lock()
-_semaphore = threading.BoundedSemaphore(2)
+# Groq's free plan allows only ~8K tokens a minute, so send one request at a time there.
+_semaphore = threading.BoundedSemaphore(1 if config.LLM_PROVIDER == "groq" else 2)
+# Free preview models sometimes return an empty or invalid reply; retry the same model before falling back.
+ATTEMPTS_PER_MODEL = 3
 
 
 def strict_schema(model):
@@ -63,74 +69,122 @@ def verify_free(model_id: str):
             raise ModelUnavailable("Configured model does not advertise structured outputs")
 
 
-def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
-    prior = context.artifact(cache_key)
-    if prior:
-        return output_type.model_validate(prior["output"])
-    if not config.OPENROUTER_API_KEY:
-        raise ModelUnavailable(
-            "OpenRouter is not configured. Add OPENROUTER_API_KEY to .env; manual scheduling remains available."
-        )
-    primary = config.OPENROUTER_EVALUATOR_MODEL if role == "evaluator" else config.OPENROUTER_WORKER_MODEL
-    models = list(dict.fromkeys([primary] + config.OPENROUTER_FALLBACK_MODELS))
-    for model_id in models:
+def _request_parts(model_id, prompt, data, output_type, strict):
+    """Headers and JSON body for the active provider."""
+    schema = {
+        "type": "json_schema",
+        "json_schema": {"name": output_type.__name__, "strict": strict, "schema": strict_schema(output_type)},
+    }
+    body = {
+        "model": model_id,
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": json.dumps(data, default=str)},
+        ],
+        "temperature": 0.1,
+        "response_format": schema,
+    }
+    headers = {"Authorization": f"Bearer {config.LLM_API_KEY}"}
+    if config.LLM_PROVIDER == "groq":
+        body["max_completion_tokens"] = 2500
+        body["include_reasoning"] = False
+        if "gpt-oss" in model_id:
+            body["reasoning_effort"] = "low"
+    else:
+        body["max_tokens"] = 6000
+        body["provider"] = {"require_parameters": True, "max_price": {"prompt": 0, "completion": 0}}
+        headers.update({"HTTP-Referer": config.APP_BASE_URL, "X-Title": "Predestination"})
+    return headers, body
+
+
+def _rate_limit_pause(error):
+    """Seconds to wait after HTTP 429, honouring Retry-After (capped), else None."""
+    if isinstance(error, httpx.HTTPStatusError) and error.response.status_code == 429:
         try:
-            verify_free(model_id)
-        except ModelUnavailable:
-            continue
-        # Each network attempt consumes a durable budget, including failed attempts.
-        for attempt in range(2):
+            return min(max(float(error.response.headers.get("retry-after", "2")), 1.0), 20.0)
+        except ValueError:
+            return 5.0
+    return None
+
+
+NOT_CONNECTED = "The AI assistant is not connected yet (no model key is set). You can still add events yourself with Fill details."
+
+
+def _structured(role, prompt, data, output_type, attempts, before_attempt=None):
+    """Ask the active provider for a reply matching output_type, retrying and falling back across models.
+
+    Returns (output, response body, model id). before_attempt runs before every network attempt.
+    """
+    if not config.LLM_API_KEY:
+        raise ModelUnavailable(NOT_CONNECTED)
+    primary = config.LLM_EVALUATOR_MODEL if role in config.LLM_LIGHT_ROLES else config.LLM_WORKER_MODEL
+    models = list(dict.fromkeys([primary] + config.LLM_FALLBACK_MODELS))
+    strict = True
+    for model_id in models:
+        if config.LLM_PROVIDER == "openrouter":
+            try:
+                verify_free(model_id)
+            except ModelUnavailable:
+                continue
+        for attempt in range(attempts):
+            pause = 1.0
             with _semaphore:
-                context.reserve_attempt()
+                if before_attempt:
+                    before_attempt()
                 try:
-                    response = _client.post(
-                        "/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {config.OPENROUTER_API_KEY}",
-                            "HTTP-Referer": config.APP_BASE_URL,
-                            "X-Title": "Predestination",
-                        },
-                        json={
-                            "model": model_id,
-                            "messages": [
-                                {"role": "system", "content": prompt},
-                                {"role": "user", "content": json.dumps(data, default=str)},
-                            ],
-                            "temperature": 0.1,
-                            "max_tokens": 6000,
-                            "provider": {
-                                "require_parameters": True,
-                                "max_price": {"prompt": 0, "completion": 0},
-                            },
-                            "response_format": {
-                                "type": "json_schema",
-                                "json_schema": {
-                                    "name": output_type.__name__,
-                                    "strict": True,
-                                    "schema": strict_schema(output_type),
-                                },
-                            },
-                        },
-                    )
+                    headers, request_body = _request_parts(model_id, prompt, data, output_type, strict)
+                    response = _client.post("/chat/completions", headers=headers, json=request_body)
                     response.raise_for_status()
                     body = response.json()
                     output = output_type.model_validate_json(body["choices"][0]["message"]["content"])
-                    context.save_artifact(
-                        cache_key,
-                        "model_call",
-                        {
-                            "output": output.model_dump(mode="json"),
-                            "role": role,
-                            "requested_model": model_id,
-                            "actual_model": body.get("model"),
-                            "usage": body.get("usage", {}),
-                            "prompt_version": config.PROMPT_VERSION,
-                        },
+                    return output, body, model_id
+                except (ValidationError, ValueError, KeyError, httpx.HTTPError) as error:
+                    pause = _rate_limit_pause(error) or pause
+                    status = error.response.status_code if isinstance(error, httpx.HTTPStatusError) else None
+                    logger.warning(
+                        "model call failed: provider=%s model=%s role=%s attempt=%d status=%s error=%s detail=%.200s",
+                        config.LLM_PROVIDER,
+                        model_id,
+                        role,
+                        attempt + 1,
+                        status,
+                        type(error).__name__,
+                        " ".join((error.response.text if status else str(error)).split()),
                     )
-                    return output
-                except (ValidationError, ValueError, KeyError, httpx.HTTPError):
-                    if attempt == 0:
-                        time.sleep(0.5)
+                    if config.LLM_PROVIDER == "groq" and status == 400:
+                        strict = False  # this model rejected the strict schema; use best-effort mode
+            if attempt < attempts - 1:
+                time.sleep(pause)
     raise ModelUnavailable(
-        "Free model providers could not complete this request. Your progress is saved; retry later."
+        "The AI models could not complete this request right now. Your progress is saved; try again shortly."
     )
+
+
+def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
+    """Durable call inside a worker run: cached per turn, and every attempt consumes the run budget."""
+    prior = context.artifact(cache_key)
+    if prior:
+        return output_type.model_validate(prior["output"])
+    output, body, model_id = _structured(
+        role, prompt, data, output_type, ATTEMPTS_PER_MODEL, before_attempt=context.reserve_attempt
+    )
+    context.save_artifact(
+        cache_key,
+        "model_call",
+        {
+            "output": output.model_dump(mode="json"),
+            "role": role,
+            "provider": config.LLM_PROVIDER,
+            "requested_model": model_id,
+            "actual_model": body.get("model"),
+            "usage": body.get("usage", {}),
+            "prompt_version": config.PROMPT_VERSION,
+        },
+    )
+    return output
+
+
+def respond(role: str, prompt: str, data: dict, output_type):
+    """Quick conversational call outside a worker run (voice turns). Nothing is cached; no calendar access."""
+    output, _, _ = _structured(role, prompt, data, output_type, attempts=2)
+    return output

@@ -19,16 +19,25 @@ async function readApiError(response, fallback='Request failed') {
 async function submitAuth(mode) {
   const email = authEmail.value.trim(), password = authPassword.value;
   authError.textContent = '';
-  if (!email || !password) { authError.textContent = 'Email and password are required.'; return; }
+  if (!email) { authError.textContent = 'Enter your email address.'; authEmail.focus(); return; }
+  if (!password) { authError.textContent = 'Enter your password.'; authPassword.focus(); return; }
+  const buttons = [loginBtn, signupBtn];
+  buttons.forEach(b => { b.disabled = true; });
+  (mode === 'login' ? loginBtn : signupBtn).dataset.label = (mode === 'login' ? loginBtn : signupBtn).textContent;
+  (mode === 'login' ? loginBtn : signupBtn).textContent = mode === 'login' ? 'Signing in…' : 'Creating…';
   try {
     const r = await fetch(window.API_BASE_URL + `/api/auth/${mode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}), credentials: 'include' });
-    if (!r.ok) { authError.textContent = await readApiError(r, 'Could not sign in.'); return; }
+    if (!r.ok) { authError.textContent = await readApiError(r, mode === 'login' ? 'Could not sign in.' : 'Could not create the account.'); return; }
     window.location.href = window.PLANNER_URL;
-  } catch(e) { authError.textContent = 'Network error.'; }
+  } catch(e) { authError.textContent = 'Could not reach the server. Check your connection and try again.'; }
+  finally {
+    buttons.forEach(b => { b.disabled = false; });
+    for (const b of buttons) if (b.dataset.label) { b.textContent = b.dataset.label; delete b.dataset.label; }
+  }
 }
-document.getElementById('auth-login-btn').addEventListener('click', () => submitAuth('login'));
-document.getElementById('auth-signup-btn').addEventListener('click', () => submitAuth('signup'));
-authPassword.addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth('login'); });
+const loginBtn = document.getElementById('auth-login-btn'), signupBtn = document.getElementById('auth-signup-btn');
+document.getElementById('auth-form').addEventListener('submit', e => { e.preventDefault(); authPassword.autocomplete = 'current-password'; submitAuth('login'); });
+signupBtn.addEventListener('click', () => { authPassword.autocomplete = 'new-password'; submitAuth('signup'); });
 checkAuth();
 
 /* ── Background animation ──────────────────────────────────────── */
@@ -391,8 +400,9 @@ checkAuth();
     const inAlpha = transitioning ? easeOut(crossfade) : 1.0;
     SCENES[sceneIdx](sceneT, inAlpha * 1.4);
 
-    requestAnimationFrame(frame);
+    if (!reducedMotion) requestAnimationFrame(frame);
   }
 
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   requestAnimationFrame(frame);
 })();

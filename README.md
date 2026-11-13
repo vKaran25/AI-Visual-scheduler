@@ -2,6 +2,21 @@
 
 Predestination combines a LangGraph orchestrator and specialist workers with a bounded evaluator–optimizer loop. PostgreSQL stores calendar records, approvals, jobs, graph checkpoints, and Google synchronization state.
 
+## Quick local demo (no Docker, no accounts)
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-local.txt -c requirements.lock
+.\.venv\Scripts\python.exe scripts\dev.py seed   # demo student account with a realistic week
+.\.venv\Scripts\python.exe scripts\dev.py up     # embedded PostgreSQL + API + worker
+```
+
+Open <http://127.0.0.1:8000/home> (use `127.0.0.1`, not `localhost`) and sign in as
+`student@example.com` (password: `DEMO_PASSWORD` in `app/demo_seed.py`). Manual scheduling, voice and the MCP
+server work without any key; add a free `OPENROUTER_API_KEY` to `.env` for the assistant. Run the tests with
+`scripts\dev.py test`, and the MCP server with `scripts\dev.py mcp`
+(see [the prototype architecture](docs/demo-architecture.md)).
+
 ## Start locally
 
 Use Python 3.12 and PostgreSQL 16 or later. No SQLite fallback or data import is performed.

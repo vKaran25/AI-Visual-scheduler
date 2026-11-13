@@ -1,5 +1,6 @@
 """Validated contracts shared by graph nodes and calendar services."""
 
+import re
 from datetime import date as CalendarDate
 from typing import Literal
 
@@ -56,6 +57,14 @@ class EventData(Contract):
     label: str = Field(default="Busy", min_length=1, max_length=240)
     color: str = "#397969"
     repeatDays: list[int] = Field(default_factory=list)
+
+    @field_validator("color")
+    @classmethod
+    def hex_color(cls, value):
+        # Rejected here, before a draft preview is stored or rendered.
+        if not re.fullmatch(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?", value):
+            raise ValueError("Choose a hexadecimal event color")
+        return value
 
     @field_validator("repeatDays")
     @classmethod
@@ -178,3 +187,16 @@ def validate_work_orders(orders: list[WorkOrder], total_minutes: int | None = No
         or sum(o.duration_budget or 0 for o in planners) != total_minutes
     ):
         raise ValueError("Planning work-order budgets must equal the requested total")
+
+
+class VoiceTurn(Contract):
+    """The voice agent's choice for one spoken turn. Code validates and performs the action."""
+
+    say: str = Field(default="", max_length=400)
+    action: Literal["none", "read_schedule", "find_free_time", "delegate", "approve", "reject", "cancel"] = (
+        "none"
+    )
+    request: str = Field(default="", max_length=1000)
+    start_date: CalendarDate | None = None
+    end_date: CalendarDate | None = None
+    hours: float | None = Field(default=None, gt=0, le=24, allow_inf_nan=False)

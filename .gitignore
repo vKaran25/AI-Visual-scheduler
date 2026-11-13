@@ -175,3 +175,32 @@ pyrightconfig.json
 
 # project specific
 data
+# Local development database and logs
+.pgdata/
+*.local.log
+.playwright-mcp/
+
+# ── Local-only: never push these ─────────────────────────────────────────────
+# Secrets and per-machine settings (copy .env.example to .env)
+.env
+.env.*
+!.env.example
+# Machine-specific tool settings and scratch work
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+_*.py
+*.scratch.*
+# Demo captures and recordings (regenerate any time; the docs describe them)
+docs/demo/*.png
+docs/demo/*.gif
+docs/demo/*.mp4
+# Config that contains this computer's absolute paths (use the .example template)
+docs/demo/claude_desktop_config.json
+# Test and tool output
+.coverage
+htmlcov/
+playwright-report/
+test-results/

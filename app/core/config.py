@@ -21,15 +21,40 @@ CORS_ORIGINS = [
 GOOGLE_CALENDAR_TIMEZONE = os.getenv("GOOGLE_CALENDAR_TIMEZONE", "UTC")
 GOOGLE_TOKEN_ENCRYPTION_KEY = os.getenv("GOOGLE_TOKEN_ENCRYPTION_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_WORKER_MODEL = os.getenv("OPENROUTER_WORKER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
-OPENROUTER_EVALUATOR_MODEL = os.getenv("OPENROUTER_EVALUATOR_MODEL", "xingchen-agi/xing4.0-29b-a4b:free")
+OPENROUTER_WORKER_MODEL = os.getenv("OPENROUTER_WORKER_MODEL", "baidu/ernie-5.5-flash-preview:free")
+OPENROUTER_EVALUATOR_MODEL = os.getenv("OPENROUTER_EVALUATOR_MODEL", "particle-ai/particle-1:free")
 OPENROUTER_FALLBACK_MODELS = [
     s.strip()
     for s in os.getenv("OPENROUTER_FALLBACK_MODELS", OPENROUTER_EVALUATOR_MODEL).split(",")
     if s.strip()
 ]
+# Groq (OpenAI-compatible, free plan, very fast). Strict structured outputs work on the gpt-oss models.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_WORKER_MODEL = os.getenv("GROQ_WORKER_MODEL", "openai/gpt-oss-120b")
+GROQ_EVALUATOR_MODEL = os.getenv("GROQ_EVALUATOR_MODEL", "openai/gpt-oss-20b")
+# Either model can stand in for the other when one is rate limited.
+GROQ_FALLBACK_MODELS = [
+    s.strip()
+    for s in os.getenv("GROQ_FALLBACK_MODELS", f"{GROQ_EVALUATOR_MODEL},{GROQ_WORKER_MODEL}").split(",")
+    if s.strip()
+]
+# Which model service to use. Defaults to Groq when a Groq key is present, otherwise OpenRouter.
+LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or ("groq" if GROQ_API_KEY else "openrouter")).strip().lower()
+if LLM_PROVIDER not in ("openrouter", "groq"):
+    raise ValueError("LLM_PROVIDER must be 'openrouter' or 'groq'")
+if LLM_PROVIDER == "groq":
+    LLM_BASE_URL = "https://api.groq.com/openai/v1"
+    LLM_API_KEY, LLM_WORKER_MODEL = GROQ_API_KEY, GROQ_WORKER_MODEL
+    LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = GROQ_EVALUATOR_MODEL, GROQ_FALLBACK_MODELS
+    # Groq's free plan limits tokens per minute per model, so give each model its own share of the work.
+    LLM_LIGHT_ROLES = frozenset({"evaluator", "optimizer", "voice"})
+else:
+    LLM_BASE_URL = "https://openrouter.ai/api/v1"
+    LLM_API_KEY, LLM_WORKER_MODEL = OPENROUTER_API_KEY, OPENROUTER_WORKER_MODEL
+    LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = OPENROUTER_EVALUATOR_MODEL, OPENROUTER_FALLBACK_MODELS
+    LLM_LIGHT_ROLES = frozenset({"evaluator", "voice"})
 GRAPH_VERSION = "calendar-v1"
-PROMPT_VERSION = "2026-10-v1"
+PROMPT_VERSION = "2026-11-v2"
 MAX_MODEL_ATTEMPTS = 16
 MAX_WORK_ORDERS = 6
 MAX_OPTIMIZATION_ROUNDS = 2

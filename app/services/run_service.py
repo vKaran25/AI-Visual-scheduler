@@ -181,6 +181,8 @@ def cancel(db, user, run_id):
     ).first()
     if not run:
         raise LookupError("Run not found")
+    if run.status in ("completed", "failed", "cancelled"):
+        return run  # finished runs keep their outcome
     run.cancel_requested = True
     if run.status != "running":
         run.status = "cancelled"

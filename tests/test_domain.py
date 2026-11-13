@@ -145,10 +145,8 @@ def test_slack_and_start_after_are_enforced():
 def test_fixed_event_ambiguity_is_not_left_to_the_model():
     from app.domain.ambiguity import missing_event_details
 
-    assert missing_event_details("Meeting at 8 tomorrow", []) == [
-        "AM or PM for the event time",
-        "the event duration",
-    ]
+    # Only AM/PM is asked; a missing length gets the category default instead of a question.
+    assert missing_event_details("Meeting at 8 tomorrow", []) == ["AM or PM for the event time"]
     assert not missing_event_details("Meeting at 8 tomorrow", ["PM, for 45 minutes"])
     assert not missing_event_details("Meeting at 8 tomorrow", ["8pm, for 45 minutes"])
     assert not missing_event_details("Meeting at 8 tomorrow", ["8 a.m., for 45 minutes"])

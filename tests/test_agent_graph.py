@@ -27,7 +27,7 @@ def setup_model(monkeypatch, *, repair=False, missing=False, conflict=False):
                 intent="plan",
                 constraints=constraints,
                 work_orders=[order],
-                missing=["available hours"] if missing and counts[role] == 1 else [],
+                missing=["which subject to study"] if missing and counts[role] == 1 else [],
             )
         if role == "planning":
             title = "Practice with examples" if counts[role] > 1 else "Python basics"

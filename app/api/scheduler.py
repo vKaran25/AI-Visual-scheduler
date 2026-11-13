@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from app.db.models import User
 from app.db.session import get_session
+from app.domain.time import local_now
 from app.domain.time_utils import snap_to_30_min, validate_calendar_date
 from app.integrations.google_sync import queue_import
 from app.schemas.scheduler import BlockRequest
@@ -48,7 +49,7 @@ def get_slots(
     session: Session = Depends(get_session),
     user: User = Depends(auth_service.get_current_user),
 ):
-    date_str = date or datetime.now().strftime("%Y-%m-%d")
+    date_str = date or local_now(user.timezone).strftime("%Y-%m-%d")
     try:
         validate_calendar_date(date_str)
         queue_import(session, user, [date_str])
@@ -110,7 +111,9 @@ def get_free(
     session: Session = Depends(get_session),
     user: User = Depends(auth_service.get_current_user),
 ):
-    start = start_dt or snap_to_30_min(datetime.now()).isoformat(timespec="minutes")
+    start = start_dt or snap_to_30_min(local_now(user.timezone).replace(tzinfo=None)).isoformat(
+        timespec="minutes"
+    )
     try:
         parsed_hours = float(hours)
     except (TypeError, ValueError) as exc:

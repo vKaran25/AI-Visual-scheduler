@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import agent, auth, evals, google, memory, presets, scheduler
+from app.api import agent, auth, evals, google, memory, presets, scheduler, voice
 from app.core.config import APP_BASE_URL, COOKIE_SECURE, CORS_ORIGINS, JWT_SECRET_KEY
 from app.db.session import verify_schema
 
@@ -65,6 +65,7 @@ app.include_router(memory.router)
 app.include_router(agent.router)
 app.include_router(google.router)
 app.include_router(evals.router)
+app.include_router(voice.router)
 
 
 @app.middleware("http")

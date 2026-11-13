@@ -35,6 +35,7 @@ class AgentState(TypedDict, total=False):
     seen_candidates: list
     seen_issues: list
     optimization_question: str
+    assumptions: list
 
 
 class WorkerState(TypedDict, total=False):

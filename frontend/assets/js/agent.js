@@ -3,6 +3,7 @@ window.agentUI = (() => {
   let active = null, timer = null, generation = 0;
   let pendingRequest = null, deciding = false;
   const terminal = new Set(['completed','failed','cancelled']);
+  const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   function uid() { return crypto.randomUUID(); }
   async function request(path, method='GET', body) {
     const response = await fetch(window.API_BASE_URL + path, {
@@ -13,49 +14,113 @@ window.agentUI = (() => {
     if (!response.ok) { const error=new Error(await readApiError(response, 'Request failed')); error.httpStatus=response.status; throw error; }
     return response.json();
   }
-  function button(label, handler) {
+  function button(label, handler, variant) {
     const item = document.createElement('button');
-    item.type='button'; item.className='btn-secondary'; item.textContent=label;
+    item.type='button'; item.className='btn-secondary' + (variant ? ' '+variant : ''); item.textContent=label;
     item.addEventListener('click', async () => {
       item.disabled=true;
       try { await handler(); } catch(error) { showToast(error.message,'error'); } finally { if(item.isConnected) item.disabled=false; }
     });
     return item;
   }
+  // Friendly, student-readable event text: "Study session · Tue 12 Nov · 4:00–6:00 PM (2h)".
+  function clock12(time) {
+    const hour=Number(time.slice(0,2)), minute=time.slice(3,5);
+    return ((hour+11)%12+1)+(minute==='00' ? '' : ':'+minute)+(hour%24<12 ? ' AM' : ' PM');
+  }
+  function span12(start,end) {
+    const a=clock12(start), b=clock12(end);
+    return a.slice(-2)===b.slice(-2) ? a.slice(0,-3)+'–'+b : a+'–'+b;
+  }
+  function niceDate(value) {
+    if (!value) return 'Repeating';
+    const [y,m,d]=value.split('-').map(Number);
+    return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  }
+  function niceDuration(minutes) {
+    const hours=Math.floor(minutes/60), rest=Math.round(minutes%60);
+    return hours ? hours+'h'+(rest ? ' '+rest+'m' : '') : rest+' min';
+  }
   function eventText(value) {
     if (!value) return '';
-    const repeat = value.repeatDays && value.repeatDays.length ? ' weekly ('+value.repeatDays.join(', ')+')' : '';
     const clockMinutes = time => Number(time.slice(0,2))*60 + Number(time.slice(3));
     const minutes = value.durationMinutes ?? (clockMinutes(value.end) - clockMinutes(value.start));
-    const duration = ' · '+minutes+' min';
-    return (value.label || 'Event')+' · '+(value.date || 'Repeating')+' '+value.start+'–'+value.end+repeat+duration+' · '+(value.timezone || currentUser.timezone);
+    const when = value.repeatDays && value.repeatDays.length
+      ? 'Every '+value.repeatDays.map(d=>DAYS[d]).join(', ')
+      : niceDate(value.date);
+    return (value.label || 'Event')+' · '+when+' · '+span12(value.start,value.end)+' ('+niceDuration(minutes)+')';
+  }
+  function spokenEvent(value) {
+    if (!value) return 'an event';
+    let when='every '+(value.repeatDays||[]).map(d=>['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][d]).join(' and ');
+    if (value.date) {
+      const [y,m,d]=value.date.split('-').map(Number);
+      when=new Date(y,m-1,d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    }
+    return (value.label || 'an event')+' on '+when+', from '+span12(value.start,value.end);
+  }
+  function describeDraft(draft) {
+    const parts=(draft.preview.changes || []).map(change =>
+      change.kind==='delete' ? 'remove '+spokenEvent(change.before) :
+      change.kind==='update' ? 'move '+spokenEvent(change.before)+' to '+spokenEvent(change.event) :
+      change.kind==='preset_save' ? 'save a template' : 'add '+spokenEvent(change.event));
+    const notes=(draft.preview.notes || []).map(note => note.replace(/ Reply with.*$/, ''));
+    return parts.join(', and ')+(notes.length ? '. '+notes.join(' ') : '');
   }
   function preview(container, draft) {
     const heading = document.createElement('strong');
-    heading.textContent='Proposed changes · Not saved';
+    heading.className='draft-heading';
+    heading.textContent='Proposed changes · Not saved yet';
     const list=document.createElement('ul');
+    list.className='draft-list';
     for (const change of draft.preview.changes || []) {
       const row=document.createElement('li');
-      row.textContent=change.kind === 'delete' ? 'Delete: '+eventText(change.before) :
-        change.kind === 'update' ? 'Move/edit: '+eventText(change.before)+' → '+eventText(change.event) :
-        change.kind === 'preset_save' ? 'Save preset: '+change.name : 'Add: '+eventText(change.event);
+      row.className='draft-'+change.kind;
+      const tag=document.createElement('span'); tag.className='draft-tag';
+      const body=document.createElement('span');
+      if (change.kind==='delete') { tag.textContent='Remove'; body.textContent=eventText(change.before); }
+      else if (change.kind==='update') { tag.textContent='Change'; body.textContent=eventText(change.before)+' → '+eventText(change.event); }
+      else if (change.kind==='preset_save') { tag.textContent='Save'; body.textContent='Template '+change.name; }
+      else { tag.textContent='Add'; body.textContent=eventText(change.event); }
+      row.append(tag,body);
       list.append(row);
     }
+    const zone=document.createElement('p'); zone.className='draft-zone';
+    zone.textContent='Times are in '+currentUser.timezone+'.';
     container.append(heading,list);
+    for (const note of draft.preview.notes || []) {
+      const assumed=document.createElement('p'); assumed.className='draft-note'; assumed.textContent=note; container.append(assumed);
+    }
+    container.append(zone);
+  }
+  // Only rebuild a run card when something visible changed, so buttons keep focus while polling.
+  function signature(run) {
+    return JSON.stringify([run.status, run.stage, run.error, run.draft && run.draft.revision,
+      run.pending && run.pending.question, run.result && run.result.response, run.result && run.result.saved_event_date]);
   }
   function render(run) {
     let box=aiMessages.querySelector('[data-run-id="'+run.run_id+'"]');
+    const created=!box;
     if (!box) { box=document.createElement('div'); box.className='ai-msg agent-run'; box.dataset.runId=run.run_id; aiMessages.append(box); }
+    const sig=signature(run);
+    if (!created && box.dataset.sig===sig) return;
+    box.dataset.sig=sig;
+    const nearBottom=aiMessages.scrollHeight-aiMessages.scrollTop-aiMessages.clientHeight<80;
     box.replaceChildren();
-    const label=document.createElement('p'); label.textContent=run.stage || run.status; box.append(label);
+    box.dataset.status=run.status;
+    const label=document.createElement('p'); label.className='run-stage'; label.textContent=run.stage || run.status; box.append(label);
+    if (['queued','running'].includes(run.status)) box.setAttribute('aria-busy','true'); else box.removeAttribute('aria-busy');
     if (run.status==='awaiting_input') {
-      const question=document.createElement('p'); question.textContent=run.pending.question || 'Please answer below.'; box.append(question);
-      aiPrompt.placeholder='Answer the question…';
+      const question=document.createElement('p'); question.className='run-question'; question.textContent=run.pending.question || 'Please answer below.'; box.append(question);
+      aiPrompt.placeholder='Type your answer…';
+      aiPrompt.focus();
     }
     if (run.status==='awaiting_approval' && run.draft) {
       preview(box,run.draft);
-      box.append(button('Approve',()=>decide(run,true)),button('Reject',()=>decide(run,false)));
-      const hint=document.createElement('p'); hint.textContent='To revise, describe the change in the message box.'; box.append(hint);
+      const actions=document.createElement('div'); actions.className='agent-actions';
+      actions.append(button('Approve',()=>decide(run,true),'agent-approve'),button('Reject',()=>decide(run,false),'agent-reject'));
+      box.append(actions);
+      const hint=document.createElement('p'); hint.className='run-hint'; hint.textContent='Nothing is saved until you approve. To change the plan, describe the change in the message box.'; box.append(hint);
     }
     if (run.status==='completed') {
       label.textContent=run.result.response || 'Completed.';
@@ -79,13 +144,14 @@ window.agentUI = (() => {
     if (!terminal.has(run.status)) {
       box.append(button('Cancel request',async()=>track(await request('/api/agent/runs/'+run.run_id+'/cancel','POST'))));
     }
-    aiMessages.scrollTop=aiMessages.scrollHeight;
+    if (created || nearBottom) aiMessages.scrollTop=aiMessages.scrollHeight;
+    window.dispatchEvent(new CustomEvent('agent-run',{detail:run}));
   }
   function track(run) {
     active=run;
     aiSendBtn.disabled=["queued","running"].includes(run.status);
     currentSessionId=run.session_id;
-    sessionStorage.setItem('predestination:last-session:'+currentUser.id,run.session_id);
+    try { sessionStorage.setItem('predestination:last-session:'+currentUser.id,run.session_id); } catch {}
     render(run);
     clearTimeout(timer);
     const ticket=++generation;
@@ -96,13 +162,14 @@ window.agentUI = (() => {
     }
     return run;
   }
+  let reconnectToast=0;
   async function poll(id,ticket) {
     try {
       const run=await request('/api/agent/runs/'+id);
       if (ticket===generation) track(run);
     } catch(error) {
       if (ticket!==generation) return;
-      showToast('Progress connection interrupted. Reconnecting…','error');
+      if (Date.now()-reconnectToast>15000) { reconnectToast=Date.now(); showToast('Connection interrupted. Reconnecting…','error'); }
       timer=setTimeout(()=>poll(id,ticket),3000);
     }
   }
@@ -119,6 +186,7 @@ window.agentUI = (() => {
     }
     aiRequestInFlight=true; aiSendBtn.disabled=true;
     const userMessage=document.createElement('div'); userMessage.className='user-msg'; userMessage.textContent=text; aiMessages.append(userMessage);
+    aiMessages.scrollTop=aiMessages.scrollHeight;
     try {
       let run;
       if (active && active.session_id===currentSessionId && ['awaiting_input','awaiting_approval'].includes(active.status)) {
@@ -133,6 +201,7 @@ window.agentUI = (() => {
       run=await request(pendingRequest.path,'POST',pendingRequest.body);
       pendingRequest=null;
       if (aiPrompt.value===original) aiPrompt.value='';
+      aiPrompt.placeholder='e.g. Plan 6 hours of calculus revision before Friday, after my classes…';
       track(run);
     } catch(error) {
       if(error.httpStatus) pendingRequest=null;
@@ -156,6 +225,13 @@ window.agentUI = (() => {
     try {
       track(await request('/api/agent/'+(accept?'confirm':'reject'),'POST',
         {session_id:run.session_id,draft_id:run.draft.id,revision:run.draft.revision}));
+    } catch(error) {
+      if (error.httpStatus===409) {
+        showToast('The calendar changed while you were reviewing. Showing the latest proposal.','error');
+        try { track(await request('/api/agent/runs/'+run.run_id)); } catch {}
+        return;
+      }
+      throw error;
     } finally {
       deciding=false;
       if (active===run) {
@@ -193,23 +269,52 @@ window.agentUI = (() => {
       }
     } catch {}
   }
+  // Timezone picker: a labelled dialog instead of a free-text prompt.
+  function setupTimezoneDialog(zoneButton) {
+    const dialog=document.getElementById('tz-dialog'), select=document.getElementById('tz-select');
+    const error=document.getElementById('tz-error'), save=document.getElementById('tz-save');
+    const browserZone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let zones=[];
+    try { zones=Intl.supportedValuesOf('timeZone'); } catch {}
+    for (const zone of [currentUser.timezone, browserZone, 'UTC', 'Asia/Kolkata']) if (zone && !zones.includes(zone)) zones.unshift(zone);
+    select.replaceChildren(...zones.map(zone => { const o=document.createElement('option'); o.value=zone; o.textContent=zone.replace(/_/g,' '); return o; }));
+    function open() {
+      select.value=currentUser.timezone_confirmed ? currentUser.timezone : browserZone;
+      error.textContent='';
+      if (!dialog.open) dialog.showModal();
+      select.focus();
+    }
+    zoneButton.addEventListener('click', open);
+    document.getElementById('tz-cancel').addEventListener('click', () => dialog.close());
+    document.getElementById('tz-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      save.disabled=true; error.textContent='';
+      try {
+        currentUser=await request('/api/me/timezone','PUT',{timezone:select.value});
+        zoneButton.textContent='Timezone: '+currentUser.timezone;
+        dialog.close();
+        setDate(window.calendarNow());
+        showToast('Timezone confirmed','success');
+      } catch(failure) { error.textContent=failure.message || 'Could not save the timezone.'; }
+      finally { save.disabled=false; }
+    });
+    return open;
+  }
   async function initialize() {
     const bar=document.createElement('div'); bar.className='timezone-control';
-    const zoneButton=button('Timezone: '+currentUser.timezone,async()=>{
-      const value=window.prompt('Calendar timezone (IANA name, for example Asia/Kolkata)',currentUser.timezone_confirmed ? currentUser.timezone : Intl.DateTimeFormat().resolvedOptions().timeZone);
-      if(!value) return;
-      currentUser=await request('/api/me/timezone','PUT',{timezone:value});
-      zoneButton.textContent='Timezone: '+currentUser.timezone;
-      setDate(window.calendarNow());
-      showToast('Timezone confirmed','success');
-    });
+    const zoneButton=document.createElement('button');
+    zoneButton.type='button'; zoneButton.textContent='Timezone: '+currentUser.timezone;
+    zoneButton.setAttribute('aria-label','Calendar timezone: '+currentUser.timezone+'. Change');
+    const openTimezone=setupTimezoneDialog(zoneButton);
     bar.append(zoneButton); userEmail.parentElement.append(bar);
-    if(!currentUser.timezone_confirmed) showToast('Confirm your timezone before asking the assistant to schedule.','info');
-    const saved=sessionStorage.getItem('predestination:last-session:'+currentUser.id);
+    if(!currentUser.timezone_confirmed) setTimeout(openTimezone, 400);
+    let saved=null;
+    try { saved=sessionStorage.getItem('predestination:last-session:'+currentUser.id); } catch {}
     if(saved && !currentSessionId) await resumeSession(saved,'Resumed conversation');
     await memorySuggestions();
     let lastSync = null;
     setInterval(async () => {
+      if (document.hidden) return;
       try {
         const jobs = await request('/api/google/jobs');
         const completed = jobs.filter(j=>j.status==='completed').map(j=>j.id).join(',');
@@ -223,8 +328,8 @@ window.agentUI = (() => {
           aiMessages.append(box);
         }
       } catch {}
-    },5000);
+    },15000);
   }
-  return {send,restore,restoreRun,initialize, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
+  return {send,restore,restoreRun,initialize,describeDraft, follow(run){ return track(run); }, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
 })();
 async function sendAiMessage(){ return window.agentUI.send(); }

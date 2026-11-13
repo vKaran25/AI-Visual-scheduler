@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "predestination": {
+      "command": "C:\\path\\to\\scheduler\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\path\\to\\scheduler\\scripts\\dev.py",
+        "mcp"
+      ]
+    }
+  }
+}
