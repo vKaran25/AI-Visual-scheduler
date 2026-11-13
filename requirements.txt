@@ -22,3 +22,4 @@ pwdlib[argon2]>=0.2,<1
 python-dotenv>=1,<2
 email-validator>=2,<3
 tzdata>=2025.1
+mcp>=2.3,<3

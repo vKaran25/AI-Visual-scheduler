@@ -12,6 +12,20 @@ from uuid import uuid4
 
 from playwright.sync_api import expect, sync_playwright
 
+FAKE_SPEECH = """
+window.SpeechRecognition = window.webkitSpeechRecognition = class {
+  start() { setTimeout(() => this.onstart && this.onstart(), 10); }
+  stop() {
+    setTimeout(() => {
+      const result = Object.assign([{ transcript: 'plan two hours of physics tomorrow' }], { isFinal: true });
+      if (this.onresult) this.onresult({ resultIndex: 0, results: [result] });
+      if (this.onend) this.onend();
+    }, 20);
+  }
+  abort() {}
+};
+"""
+
 
 def main(base):
     errors = []
@@ -19,15 +33,20 @@ def main(base):
         browser = runner.chromium.launch(channel=os.getenv("BROWSER_CHANNEL", "msedge"), headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
         page.on("pageerror", lambda error: errors.append(str(error)))
+        # A scripted stand-in for the browser's speech engine, so voice is tested without a microphone.
+        page.add_init_script(FAKE_SPEECH)
         page.goto(base + "/home", wait_until="domcontentloaded")
         page.locator("#auth-email").fill(f"smoke-{uuid4().hex[:12]}@example.com")
         page.locator("#auth-password").fill("Smoke-test-password123")
         page.locator("#auth-signup-btn").click()
         page.wait_for_url(base + "/")
-        expect(page.locator("#calendar-style")).to_be_visible()
         expect(page.locator(".timezone-control button")).to_be_visible()
-        page.on("dialog", lambda dialog: dialog.accept("UTC") if dialog.type == "prompt" else dialog.accept())
-        page.locator(".timezone-control button").click()
+        expect(page.locator("#gcal-conn-btn")).to_be_hidden()
+        # First sign-in asks for the timezone in an accessible dialog (not a free-text prompt).
+        expect(page.locator("#tz-dialog")).to_be_visible()
+        page.locator("#tz-select").select_option("UTC")
+        page.locator("#tz-save").click()
+        expect(page.locator("#tz-dialog")).not_to_be_visible()
         page.wait_for_function("typeof currentUser !== 'undefined' && currentUser.timezone_confirmed")
         page.locator("#quick-text").fill("Browser meeting on 2030-01-01 at 8 am for 45 minutes")
         page.locator("#quick-manual").click()
@@ -43,14 +62,20 @@ def main(base):
         theme = page.locator("html").get_attribute("data-theme")
         page.locator("#theme-toggle").click()
         assert page.locator("html").get_attribute("data-theme") != theme
-        page.locator("#calendar-style").select_option("predestination")
-        expect(page.locator("html")).to_have_attribute("data-style", "predestination")
         page.locator("#tools-toggle").click()
         expect(page.locator("#tools-panel")).to_be_visible()
+        # Voice: speak, stop, and review the transcript (never auto-sent); typing remains available.
+        page.locator("#planner-tab").click()
+        mic = page.locator("#ai-mic")
+        mic.click()
+        expect(mic).to_have_attribute("aria-pressed", "true")
+        mic.click()
+        expect(page.locator("#ai-prompt")).to_have_value("plan two hours of physics tomorrow")
+        expect(mic).to_have_attribute("aria-pressed", "false")
+        page.locator("#ai-prompt").fill("")
         page.locator("#tools-toggle").click()
         expect(page.locator("#tools-panel")).not_to_be_visible()
         page.reload(wait_until="domcontentloaded")
-        expect(page.locator("#calendar-style")).to_have_value("predestination")
         # Mock only the async protocol here; PostgreSQL graph execution is covered
         # by test_agent_graph.py. This verifies polling and revision-bound UI actions.
         session_id = page.request.post(base + "/api/agent/new-session").json()["session_id"]
@@ -111,11 +136,9 @@ def main(base):
         page.route("**/api/agent/confirm", confirm)
         page.locator("#quick-text").fill("UI contract test")
         page.locator("#quick-review").click()
-        expect(page.locator("#ai-prompt")).to_have_value("UI contract test")
-        page.locator("#ai-send-btn").click()
         expect(page.get_by_role("button", name="Approve", exact=True)).to_be_visible()
         expect(page.locator("#ai-chat-messages")).to_contain_text("Not saved")
-        expect(page.locator("#ai-chat-messages")).to_contain_text("60 min")
+        expect(page.locator("#ai-chat-messages")).to_contain_text("1h")
         page.reload(wait_until="domcontentloaded")
         expect(page.get_by_role("button", name="Approve", exact=True)).to_be_visible()
         page.get_by_role("button", name="Approve", exact=True).click()
@@ -125,7 +148,7 @@ def main(base):
         assert not errors, errors
         browser.close()
     print(
-        "Browser smoke passed: signup, timezone, manual entry, views, themes, tools, polling, reload recovery, approval protocol."
+        "Browser smoke passed: signup, timezone dialog, manual entry, views, themes, tools, voice, polling, reload recovery, approval protocol."
     )
 
 

@@ -66,7 +66,7 @@
     el('prev-day').setAttribute('aria-label', `Previous ${view}`);
     el('next-day').title = `Next ${view}`;
     el('next-day').setAttribute('aria-label', `Next ${view}`);
-    el('quick-text').placeholder = `Add an event, e.g. Meeting tomorrow at 8`;
+    el('quick-text').placeholder = 'Study group tomorrow at 6pm for 1 hour…';
   }
   function setView(next) {
     if (!['month','week','day'].includes(next)) return;
@@ -126,7 +126,7 @@
       cell.append(number);
       const slots = [...(rangeData[key] || [])].sort((a,b) => a.startMinutes - b.startMinutes);
       // Keep the overview readable; the Day view always exposes every block.
-      const capacity = window.innerHeight < 850 ? 1 : 2;
+      const capacity = window.innerHeight > 1000 ? 3 : 2;
       slots.slice(0,capacity).forEach(slot => cell.append(eventButton(slot,date)));
       if (slots.length > capacity) {
         const more = node('button','more-events',`+${slots.length - capacity} more`);
@@ -232,7 +232,7 @@
   el('ai-chat-panel').setAttribute('role','tabpanel'); el('ai-chat-panel').setAttribute('aria-labelledby','planner-tab');
   // Mobile account controls trigger the existing handlers, including Google status.
   const account = node('div','mobile-account');
-  ['gcal-conn-btn','logout-btn'].forEach(id => {
+  ['logout-btn'].forEach(id => {
     const button = node('button','header-small-btn',el(id).textContent);
     button.type = 'button'; button.addEventListener('click', () => el(id).click()); account.append(button);
     new MutationObserver(() => { button.textContent = el(id).textContent; }).observe(el(id),{childList:true,subtree:true,characterData:true});
@@ -267,8 +267,8 @@
       return;
     }
     aiPrompt.value = text;
-    aiPrompt.focus();
     el('quick-text').value = '';
+    window.agentUI.send();
   });
   function cancelQuick() { if (!quickSaving) { dialog.close(); el('quick-text').focus(); } }
   el('quick-cancel').addEventListener('click',cancelQuick);

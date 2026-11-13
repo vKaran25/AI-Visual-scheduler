@@ -175,3 +175,7 @@ pyrightconfig.json
 
 # project specific
 data
+# Local development database and logs
+.pgdata/
+*.local.log
+.playwright-mcp/

@@ -214,3 +214,10 @@
     .hero { text-align: center; }
     .auth-card { width: 100%; max-width: 340px; margin: 0 auto; }
   }
+
+/* Accessible focus, heading reset, still background for reduced motion */
+h1.hero-title { margin: 0; }
+.hero-subtitle { margin: 0; }
+.form-input:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.btn-primary:focus-visible, .btn-secondary:focus-visible { outline: 2px solid var(--accent2); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

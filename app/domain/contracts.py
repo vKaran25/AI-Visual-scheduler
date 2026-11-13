@@ -1,5 +1,6 @@
 """Validated contracts shared by graph nodes and calendar services."""
 
+import re
 from datetime import date as CalendarDate
 from typing import Literal
 
@@ -56,6 +57,14 @@ class EventData(Contract):
     label: str = Field(default="Busy", min_length=1, max_length=240)
     color: str = "#397969"
     repeatDays: list[int] = Field(default_factory=list)
+
+    @field_validator("color")
+    @classmethod
+    def hex_color(cls, value):
+        # Rejected here, before a draft preview is stored or rendered.
+        if not re.fullmatch(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?", value):
+            raise ValueError("Choose a hexadecimal event color")
+        return value
 
     @field_validator("repeatDays")
     @classmethod

@@ -69,7 +69,8 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
         return output_type.model_validate(prior["output"])
     if not config.OPENROUTER_API_KEY:
         raise ModelUnavailable(
-            "OpenRouter is not configured. Add OPENROUTER_API_KEY to .env; manual scheduling remains available."
+            "The AI assistant is not connected yet (no model key is set). "
+            "You can still add events yourself with Fill details."
         )
     primary = config.OPENROUTER_EVALUATOR_MODEL if role == "evaluator" else config.OPENROUTER_WORKER_MODEL
     models = list(dict.fromkeys([primary] + config.OPENROUTER_FALLBACK_MODELS))

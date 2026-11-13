@@ -58,7 +58,7 @@ function minutesToTime(m){ return `${pad(Math.floor(m/60))}:${pad(m%60)}`; }
 function timeToMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
 function dateTimeLocalStr(d){ return `${dateStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function topPx(m){ return m * (60/60); } // 1px per minute, 60px/hour
-function heightPx(m){ return Math.max(m, 40); }
+function heightPx(m){ return Math.max(m, 24); }
 
 function formatDate(d){
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -104,7 +104,7 @@ function showToast(msg, type='info'){
   icon.textContent = icons[type] || 'ℹ';
   t.replaceChildren(icon, document.createTextNode(String(msg)));
   document.getElementById('toast-container').appendChild(t);
-  setTimeout(()=>{ t.classList.add('fade-out'); setTimeout(()=>t.remove(),220); }, 2600);
+  setTimeout(()=>{ t.classList.add('fade-out'); setTimeout(()=>t.remove(),220); }, type==='error' ? 7000 : 3200);
 }
 
 // ── Build timeline grid ───────────────────────────────────────────
@@ -479,7 +479,7 @@ function renderSidebar(){
 
     html += `
       <div class="block-item${s.is_pending ? ' pending' : ''}" data-id="${s.id}">
-        <div class="bi-dot" style="background:${s.color}"></div>
+        <div class="bi-dot" style="background:${/^#[0-9a-f]{3,8}$/i.test(s.color) ? s.color : '#888'}"></div>
         <div class="bi-info">
           <div class="bi-label">${escHtml(s.label || 'Busy')}</div>
           <div class="bi-time">${s.start} – ${s.end}</div>
@@ -648,13 +648,26 @@ function openEditModal(slot){
   openModal();
 }
 
-function openModal(){ modalOverlay.classList.add('open'); mStart.focus(); }
-function closeModal(){ modalOverlay.classList.remove('open'); }
+let modalOpener = null;
+function openModal(){ modalOpener = document.activeElement; modalOverlay.classList.add('open'); mStart.focus(); }
+function closeModal(){
+  if(!modalOverlay.classList.contains('open')) return;
+  modalOverlay.classList.remove('open');
+  if(modalOpener && modalOpener.isConnected) modalOpener.focus();
+}
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
 document.getElementById('modal-cancel').addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', e=>{ if(e.target===modalOverlay) closeModal(); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+modalOverlay.addEventListener('keydown', e=>{
+  if(e.key!=='Tab') return;
+  const f=[...modalOverlay.querySelectorAll('button,input,select,textarea,[tabindex]')].filter(x=>!x.disabled && x.offsetParent!==null);
+  if(!f.length) return;
+  const first=f[0], last=f[f.length-1];
+  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+});
 
 // ── Save (add or update) ──────────────────────────────────────────
 modalSave.addEventListener('click', async ()=>{
@@ -1433,7 +1446,7 @@ function updateWalkthroughVisibility() {
   if (walkthroughCard) walkthroughCard.style.display = shouldShow ? 'block' : 'none';
   if (completeNote) completeNote.style.display = 'none';
   if (prompt) {
-    prompt.placeholder = shouldShow ? 'e.g. Set up a new GitHub repo over 2 hours...' : 'What would you like to plan?';
+    prompt.placeholder = shouldShow ? 'e.g. Plan 6 hours of calculus revision before Friday, after my classes…' : 'What would you like to plan?';
   }
 }
 

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Predestination — Welcome</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23316c52%27/%3E%3Cpath d=%27M9 12h14M9 17h9M9 22h12%27 stroke=%27white%27 stroke-width=%272.5%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -18,33 +19,33 @@
 </div>
 <div class="vignette"></div>
 
-<div class="page" id="main-content" style="display: none;">
+<main class="page" id="main-content" style="display: none;">
   <div class="hero">
     <div class="hero-badge">AI-Powered Scheduler</div>
-    <div class="hero-title"><span class="accent">Pre</span>destination</div>
-    <div class="hero-subtitle">Your day, intelligently planned. Drop your tasks — the AI finds the perfect slots.</div>
+    <h1 class="hero-title"><span class="accent">Pre</span>destination</h1>
+    <p class="hero-subtitle">Your study week, planned around your classes. Tell the assistant what you need to get done — it finds the time and you approve it.</p>
   </div>
 
-  <div class="auth-card">
+  <form class="auth-card" id="auth-form" novalidate>
     <div class="form-row">
       <div class="form-col">
-        <label class="form-label">Email</label>
-        <input type="email" id="auth-email" class="form-input" autocomplete="email" placeholder="you@example.com">
+        <label class="form-label" for="auth-email">Email</label>
+        <input type="email" id="auth-email" name="email" class="form-input" autocomplete="email" spellcheck="false" placeholder="you@example.com">
       </div>
     </div>
     <div class="form-row">
       <div class="form-col">
-        <label class="form-label">Password</label>
-        <input type="password" id="auth-password" class="form-input" autocomplete="current-password" placeholder="At least 8 characters">
+        <label class="form-label" for="auth-password">Password</label>
+        <input type="password" id="auth-password" name="password" class="form-input" autocomplete="current-password" placeholder="At least 8 characters">
       </div>
     </div>
     <div class="auth-actions">
-      <button class="btn-primary" id="auth-login-btn">Log In</button>
-      <button class="btn-secondary" id="auth-signup-btn">Sign Up</button>
+      <button type="submit" class="btn-primary" id="auth-login-btn">Log In</button>
+      <button type="button" class="btn-secondary" id="auth-signup-btn">Sign Up</button>
     </div>
-    <div id="auth-error" class="error-msg"></div>
-  </div>
-</div>
+    <div id="auth-error" class="error-msg" role="alert"></div>
+  </form>
+</main>
 
 <script src="/assets/js/landing.js"></script>
 </body>
