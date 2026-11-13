@@ -75,6 +75,22 @@ def orchestrate(state):
     }
 
 
+FRIENDLY_MISSING = {
+    "start_time": "what time it starts (include AM or PM)",
+    "end_time": "what time it ends (include AM or PM)",
+    "duration_minutes": "how long it lasts",
+    "duration": "how long it lasts",
+    "date": "which date",
+    "title": "what to call it",
+    "label": "what to call it",
+}
+
+
+def friendly_missing(item):
+    key = str(item).strip().lower().replace(" ", "_")
+    return FRIENDLY_MISSING.get(key) or str(item).replace("_", " ")
+
+
 def validate_requirements(state):
     understood = Understanding.model_validate(state["understanding"])
     missing = list(understood.missing)
@@ -94,7 +110,9 @@ def validate_requirements(state):
     if missing:
         return {
             "route": "clarify",
-            "question": "Please provide or confirm: " + "; ".join(dict.fromkeys(missing)),
+            "question": "I need a little more information: "
+            + "; ".join(dict.fromkeys(friendly_missing(item) for item in missing))
+            + ".",
             "question_reason": "missing",
         }
     if understood.intent == "availability":

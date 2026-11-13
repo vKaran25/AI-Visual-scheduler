@@ -21,6 +21,8 @@ _catalog = {}
 _catalog_at = 0
 _catalog_lock = threading.Lock()
 _semaphore = threading.BoundedSemaphore(2)
+# Free preview models sometimes return an empty or invalid reply; retry the same model before falling back.
+ATTEMPTS_PER_MODEL = 3
 
 
 def strict_schema(model):
@@ -80,7 +82,7 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
         except ModelUnavailable:
             continue
         # Each network attempt consumes a durable budget, including failed attempts.
-        for attempt in range(2):
+        for attempt in range(ATTEMPTS_PER_MODEL):
             with _semaphore:
                 context.reserve_attempt()
                 try:
@@ -130,8 +132,8 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
                     )
                     return output
                 except (ValidationError, ValueError, KeyError, httpx.HTTPError):
-                    if attempt == 0:
-                        time.sleep(0.5)
+                    if attempt < ATTEMPTS_PER_MODEL - 1:
+                        time.sleep(1)
     raise ModelUnavailable(
         "Free model providers could not complete this request. Your progress is saved; retry later."
     )
