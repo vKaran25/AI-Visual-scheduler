@@ -2,6 +2,7 @@
 
 import copy
 import json
+import logging
 import threading
 import time
 
@@ -10,6 +11,8 @@ from pydantic import ValidationError
 
 from app.core import config
 from app.runtime import context
+
+logger = logging.getLogger(__name__)
 
 
 class ModelUnavailable(RuntimeError):
@@ -83,7 +86,7 @@ def _request_parts(model_id, prompt, data, output_type, strict):
     }
     headers = {"Authorization": f"Bearer {config.LLM_API_KEY}"}
     if config.LLM_PROVIDER == "groq":
-        body["max_completion_tokens"] = 3000
+        body["max_completion_tokens"] = 2500
         body["include_reasoning"] = False
         if "gpt-oss" in model_id:
             body["reasoning_effort"] = "low"
@@ -113,7 +116,7 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
             "The AI assistant is not connected yet (no model key is set). "
             "You can still add events yourself with Fill details."
         )
-    primary = config.LLM_EVALUATOR_MODEL if role == "evaluator" else config.LLM_WORKER_MODEL
+    primary = config.LLM_EVALUATOR_MODEL if role in config.LLM_LIGHT_ROLES else config.LLM_WORKER_MODEL
     models = list(dict.fromkeys([primary] + config.LLM_FALLBACK_MODELS))
     strict = True
     for model_id in models:
@@ -149,6 +152,17 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
                     return output
                 except (ValidationError, ValueError, KeyError, httpx.HTTPError) as error:
                     pause = _rate_limit_pause(error) or pause
+                    status = error.response.status_code if isinstance(error, httpx.HTTPStatusError) else None
+                    logger.warning(
+                        "model call failed: provider=%s model=%s role=%s attempt=%d status=%s error=%s detail=%.200s",
+                        config.LLM_PROVIDER,
+                        model_id,
+                        role,
+                        attempt + 1,
+                        status,
+                        type(error).__name__,
+                        " ".join((error.response.text if status else str(error)).split()),
+                    )
                     if (
                         config.LLM_PROVIDER == "groq"
                         and isinstance(error, httpx.HTTPStatusError)

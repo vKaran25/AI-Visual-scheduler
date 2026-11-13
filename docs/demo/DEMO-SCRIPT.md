@@ -33,6 +33,11 @@ works locally.
 | 6:15 | `docs/demo-architecture.md` diagram | "Free tools only. Next steps: Google Calendar, accounts, deployment." |
 | 6:45 | Questions | |
 
+**AI limits on Groq's free plan:** it allows about 8,000 tokens a minute per model, so leave **30 to 60 seconds between AI
+requests**, and do not run two back to back. Add-event, clarification and "when am I free" requests are reliable
+(about 4 to 10 seconds). **Do not demo the multi-session study plan live**: it chains several model calls, hits the
+limit, and failed about half the time in testing.
+
 Keep the **Fill details** path as your safe path. It does not use the AI and always works.
 
 ## If something breaks

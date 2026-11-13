@@ -32,8 +32,11 @@ OPENROUTER_FALLBACK_MODELS = [
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_WORKER_MODEL = os.getenv("GROQ_WORKER_MODEL", "openai/gpt-oss-120b")
 GROQ_EVALUATOR_MODEL = os.getenv("GROQ_EVALUATOR_MODEL", "openai/gpt-oss-20b")
+# Either model can stand in for the other when one is rate limited.
 GROQ_FALLBACK_MODELS = [
-    s.strip() for s in os.getenv("GROQ_FALLBACK_MODELS", GROQ_EVALUATOR_MODEL).split(",") if s.strip()
+    s.strip()
+    for s in os.getenv("GROQ_FALLBACK_MODELS", f"{GROQ_EVALUATOR_MODEL},{GROQ_WORKER_MODEL}").split(",")
+    if s.strip()
 ]
 # Which model service to use. Defaults to Groq when a Groq key is present, otherwise OpenRouter.
 LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or ("groq" if GROQ_API_KEY else "openrouter")).strip().lower()
@@ -43,10 +46,13 @@ if LLM_PROVIDER == "groq":
     LLM_BASE_URL = "https://api.groq.com/openai/v1"
     LLM_API_KEY, LLM_WORKER_MODEL = GROQ_API_KEY, GROQ_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = GROQ_EVALUATOR_MODEL, GROQ_FALLBACK_MODELS
+    # Groq's free plan limits tokens per minute per model, so give each model its own share of the work.
+    LLM_LIGHT_ROLES = frozenset({"orchestrator", "evaluator", "optimizer"})
 else:
     LLM_BASE_URL = "https://openrouter.ai/api/v1"
     LLM_API_KEY, LLM_WORKER_MODEL = OPENROUTER_API_KEY, OPENROUTER_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = OPENROUTER_EVALUATOR_MODEL, OPENROUTER_FALLBACK_MODELS
+    LLM_LIGHT_ROLES = frozenset({"evaluator"})
 GRAPH_VERSION = "calendar-v1"
 PROMPT_VERSION = "2026-10-v1"
 MAX_MODEL_ATTEMPTS = 16
