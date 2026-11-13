@@ -4,6 +4,7 @@
     python scripts/dev.py test ...  run pytest against the local *_test database
     python scripts/dev.py seed      load the demo student calendar
     python scripts/dev.py mcp       run the MCP server (stdio)
+    python scripts/dev.py check     demo readiness checks against the running app (add --ai for AI)
     python scripts/dev.py db        print the local connection strings
 
 The database lives in .pgdata/ (git-ignored) and keeps running between commands.
@@ -83,6 +84,8 @@ def main() -> None:
         env = env_for_app(database())
         run(["-m", "app.db.migrate"], env)
         sys.exit(run(["-m", "app.demo_seed", *rest], env))
+    elif command == "check":  # demo readiness checks against the running app
+        sys.exit(run(["scripts/demo_check.py", *rest], env_for_app(database())))
     elif command == "exec":  # python <args> with the local database configured
         sys.exit(run(rest, env_for_app(database())))
     elif command == "mcp":
