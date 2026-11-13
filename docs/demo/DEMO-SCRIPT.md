@@ -13,8 +13,9 @@ works locally.
 3. Click **AI Planner**, press **Speak** once and allow the microphone. Say a few words, then press **Stop**.
 4. Zoom the page to 110% and close notifications. Keep the **Month** view open.
 5. Open Claude and check the Predestination tools are connected (see "MCP setup" below).
-6. **Do not rehearse the AI more than once.** Free models allow about 50 requests a day, and one add-event run uses
-   roughly 3 to 6. The quota resets at 05:30 IST (00:00 UTC).
+6. **Go easy on AI rehearsals.** With Groq (free plan) you get about 1,000 requests and 200K tokens a day per model, which is
+   roughly 20 add-event runs. With OpenRouter free models you get only about 50 requests a day (3 to 6 per run). Both
+   reset daily at 05:30 IST (00:00 UTC).
 7. Have a screen recording of a good run ready as a backup.
 
 ## The 7 minutes
@@ -25,7 +26,7 @@ works locally.
 | 0:45 | Type `Study group tomorrow at 6pm for 1 hour` in the bar, click **Fill details** | "It reads the sentence and asks me to confirm AM or PM and the length. It never guesses times." Click **Add to calendar**. |
 | 1:45 | Switch to **Week** and **Day** views | "Same events, different views. Overlaps are rejected, and weekly classes repeat." |
 | 2:15 | Open **AI Planner**, press **Speak**, say: "Add a study group tomorrow at 6 PM for one hour called Algorithms review", press **Stop** | "Voice becomes text first and is never sent automatically. I can edit it." Then press **Ask assistant**. |
-| 2:45 | While it works (about 40 seconds), watch the stage text | "The model only suggests. Code checks the times, overlaps and total hours." Mention that free models are slow. |
+| 2:45 | While it works (a few seconds on Groq, about 40 on OpenRouter free models), watch the stage text | "The model only suggests. Code checks the times, overlaps and total hours." Mention that free models are slow. |
 | 3:30 | Approval card appears | "This is exactly what will change. Nothing is saved yet." Click **Approve**, then **View saved event**. |
 | 4:15 | Type: `Add a chemistry lab report session on Saturday` | "It asks what is missing instead of guessing." Answer: `4 PM for 2 hours`. When the card appears, click **Reject**. "Nothing was added. The human stays in control." |
 | 5:15 | Switch to Claude. Ask: "Using Predestination, what is free on Tuesday evening?" Then "Propose a 2 hour calculus revision at 5pm on Tuesday." Then "Create it." | "The same calendar is available to any AI app through MCP. It proposes first and only saves when I agree." Refresh the web calendar to show the new event. |

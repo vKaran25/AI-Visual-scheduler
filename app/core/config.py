@@ -28,6 +28,25 @@ OPENROUTER_FALLBACK_MODELS = [
     for s in os.getenv("OPENROUTER_FALLBACK_MODELS", OPENROUTER_EVALUATOR_MODEL).split(",")
     if s.strip()
 ]
+# Groq (OpenAI-compatible, free plan, very fast). Strict structured outputs work on the gpt-oss models.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_WORKER_MODEL = os.getenv("GROQ_WORKER_MODEL", "openai/gpt-oss-120b")
+GROQ_EVALUATOR_MODEL = os.getenv("GROQ_EVALUATOR_MODEL", "openai/gpt-oss-20b")
+GROQ_FALLBACK_MODELS = [
+    s.strip() for s in os.getenv("GROQ_FALLBACK_MODELS", GROQ_EVALUATOR_MODEL).split(",") if s.strip()
+]
+# Which model service to use. Defaults to Groq when a Groq key is present, otherwise OpenRouter.
+LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or ("groq" if GROQ_API_KEY else "openrouter")).strip().lower()
+if LLM_PROVIDER not in ("openrouter", "groq"):
+    raise ValueError("LLM_PROVIDER must be 'openrouter' or 'groq'")
+if LLM_PROVIDER == "groq":
+    LLM_BASE_URL = "https://api.groq.com/openai/v1"
+    LLM_API_KEY, LLM_WORKER_MODEL = GROQ_API_KEY, GROQ_WORKER_MODEL
+    LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = GROQ_EVALUATOR_MODEL, GROQ_FALLBACK_MODELS
+else:
+    LLM_BASE_URL = "https://openrouter.ai/api/v1"
+    LLM_API_KEY, LLM_WORKER_MODEL = OPENROUTER_API_KEY, OPENROUTER_WORKER_MODEL
+    LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = OPENROUTER_EVALUATOR_MODEL, OPENROUTER_FALLBACK_MODELS
 GRAPH_VERSION = "calendar-v1"
 PROMPT_VERSION = "2026-10-v1"
 MAX_MODEL_ATTEMPTS = 16

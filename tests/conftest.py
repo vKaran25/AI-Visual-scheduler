@@ -10,6 +10,8 @@ os.environ["DATABASE_DIRECT_URL"] = TEST_URL
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-with-at-least-thirty-two-bytes"
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["OPENROUTER_API_KEY"] = ""
+os.environ["GROQ_API_KEY"] = ""
+os.environ["LLM_PROVIDER"] = "openrouter"
 os.environ["GOOGLE_TOKEN_ENCRYPTION_KEY"] = "Z2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2c="
 
 

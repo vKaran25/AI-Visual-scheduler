@@ -11,6 +11,12 @@ envVarGroups:
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_WORKER_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_EVALUATOR_MODEL
+        value: openai/gpt-oss-20b
       - key: OPENROUTER_WORKER_MODEL
         value: baidu/ernie-5.5-flash-preview:free
       - key: OPENROUTER_EVALUATOR_MODEL
