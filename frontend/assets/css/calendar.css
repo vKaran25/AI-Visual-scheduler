@@ -211,3 +211,12 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
 .timezone-control { display:inline-block; }
 .toast { max-width:min(420px,calc(100vw - 32px)); overflow-wrap:anywhere; }
 #ai-prompt { height:72px; min-height:72px; resize:vertical; }
+.agent-run .draft-note { margin:6px 0 0; padding:6px 10px; font-size:12px; color:var(--text); background:var(--accent-bg); border-radius:6px; }
+
+/* Talking assistant */
+#ai-mic[data-state="thinking"] .rec-dot { background:var(--accent); animation:pulse 1s ease-in-out infinite; }
+#ai-mic[data-state="speaking"] { border-color:var(--accent); color:var(--accent2); background:var(--accent-bg); }
+#ai-mic[data-state="speaking"] .rec-dot { background:var(--accent); animation:pulse .6s ease-in-out infinite; }
+.handsfree { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+.voice-msg::before { content:"\1F3A4  "; }
+.voice-reply { border-left:3px solid var(--accent); }

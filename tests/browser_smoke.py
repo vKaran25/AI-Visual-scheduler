@@ -17,13 +17,21 @@ window.SpeechRecognition = window.webkitSpeechRecognition = class {
   start() { setTimeout(() => this.onstart && this.onstart(), 10); }
   stop() {
     setTimeout(() => {
-      const result = Object.assign([{ transcript: 'plan two hours of physics tomorrow' }], { isFinal: true });
+      const result = Object.assign([{ transcript: 'add a study group tomorrow at 6 pm' }], { isFinal: true });
       if (this.onresult) this.onresult({ resultIndex: 0, results: [result] });
       if (this.onend) this.onend();
     }, 20);
   }
-  abort() {}
+  abort() { if (this.onend) this.onend(); }
 };
+// Record what the assistant says instead of playing audio.
+window.__spoken = [];
+const fakeSynth = {
+  getVoices: () => [],
+  cancel: () => {},
+  speak: utterance => { window.__spoken.push(utterance.text); setTimeout(() => utterance.onend && utterance.onend(), 10); },
+};
+Object.defineProperty(window, 'speechSynthesis', { value: fakeSynth, configurable: true });
 """
 
 
@@ -64,15 +72,28 @@ def main(base):
         assert page.locator("html").get_attribute("data-theme") != theme
         page.locator("#tools-toggle").click()
         expect(page.locator("#tools-panel")).to_be_visible()
-        # Voice: speak, stop, and review the transcript (never auto-sent); typing remains available.
+        # Talking assistant: tap Talk, speak, the reply is shown and spoken; typing remains available.
         page.locator("#planner-tab").click()
+        page.route(
+            "**/api/voice/turn",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {"session_id": None, "say": "Sure, what time works?", "action": "none", "run": None}
+                ),
+            ),
+        )
         mic = page.locator("#ai-mic")
+        expect(mic).to_contain_text("Talk")
         mic.click()
         expect(mic).to_have_attribute("aria-pressed", "true")
         mic.click()
-        expect(page.locator("#ai-prompt")).to_have_value("plan two hours of physics tomorrow")
+        expect(page.locator("#ai-chat-messages")).to_contain_text("add a study group tomorrow at 6 pm")
+        expect(page.locator("#ai-chat-messages")).to_contain_text("Sure, what time works?")
+        page.wait_for_function("window.__spoken.includes('Sure, what time works?')")
         expect(mic).to_have_attribute("aria-pressed", "false")
-        page.locator("#ai-prompt").fill("")
+        page.unroute("**/api/voice/turn")
         page.locator("#tools-toggle").click()
         expect(page.locator("#tools-panel")).not_to_be_visible()
         page.reload(wait_until="domcontentloaded")

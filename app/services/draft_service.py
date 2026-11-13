@@ -105,8 +105,12 @@ def prepare(db: Session, user: User, actions: list[Action]) -> dict:
         if data["date"] and not data["repeatDays"]:
             event_instants(data["date"], data["start"], data["end"], user.timezone)
         operation["event"] = data
-        if any(overlaps(data, b) for b in final):
-            raise ValueError(f"Time overlaps with existing or proposed event: {data['label']}")
+        clash = next((b for b in final if overlaps(data, b)), None)
+        if clash:
+            raise ValueError(
+                f"{data['label']} ({data['start']}-{data['end']}) overlaps {clash.get('label') or 'another event'} "
+                f"({clash['start']}-{clash['end']})"
+            )
         final.append(data)
     scheduled = [o["event"] for o in operations if o["kind"] in ("create", "update")]
 

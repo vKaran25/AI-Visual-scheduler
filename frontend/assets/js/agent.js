@@ -50,6 +50,23 @@ window.agentUI = (() => {
       : niceDate(value.date);
     return (value.label || 'Event')+' · '+when+' · '+span12(value.start,value.end)+' ('+niceDuration(minutes)+')';
   }
+  function spokenEvent(value) {
+    if (!value) return 'an event';
+    let when='every '+(value.repeatDays||[]).map(d=>['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][d]).join(' and ');
+    if (value.date) {
+      const [y,m,d]=value.date.split('-').map(Number);
+      when=new Date(y,m-1,d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    }
+    return (value.label || 'an event')+' on '+when+', from '+span12(value.start,value.end);
+  }
+  function describeDraft(draft) {
+    const parts=(draft.preview.changes || []).map(change =>
+      change.kind==='delete' ? 'remove '+spokenEvent(change.before) :
+      change.kind==='update' ? 'move '+spokenEvent(change.before)+' to '+spokenEvent(change.event) :
+      change.kind==='preset_save' ? 'save a template' : 'add '+spokenEvent(change.event));
+    const notes=(draft.preview.notes || []).map(note => note.replace(/ Reply with.*$/, ''));
+    return parts.join(', and ')+(notes.length ? '. '+notes.join(' ') : '');
+  }
   function preview(container, draft) {
     const heading = document.createElement('strong');
     heading.className='draft-heading';
@@ -70,7 +87,11 @@ window.agentUI = (() => {
     }
     const zone=document.createElement('p'); zone.className='draft-zone';
     zone.textContent='Times are in '+currentUser.timezone+'.';
-    container.append(heading,list,zone);
+    container.append(heading,list);
+    for (const note of draft.preview.notes || []) {
+      const assumed=document.createElement('p'); assumed.className='draft-note'; assumed.textContent=note; container.append(assumed);
+    }
+    container.append(zone);
   }
   // Only rebuild a run card when something visible changed, so buttons keep focus while polling.
   function signature(run) {
@@ -124,6 +145,7 @@ window.agentUI = (() => {
       box.append(button('Cancel request',async()=>track(await request('/api/agent/runs/'+run.run_id+'/cancel','POST'))));
     }
     if (created || nearBottom) aiMessages.scrollTop=aiMessages.scrollHeight;
+    window.dispatchEvent(new CustomEvent('agent-run',{detail:run}));
   }
   function track(run) {
     active=run;
@@ -308,6 +330,6 @@ window.agentUI = (() => {
       } catch {}
     },15000);
   }
-  return {send,restore,restoreRun,initialize, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
+  return {send,restore,restoreRun,initialize,describeDraft, follow(run){ return track(run); }, clear(){active=null;++generation;clearTimeout(timer);pendingRequest=null;}};
 })();
 async function sendAiMessage(){ return window.agentUI.send(); }

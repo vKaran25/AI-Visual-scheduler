@@ -47,14 +47,14 @@ if LLM_PROVIDER == "groq":
     LLM_API_KEY, LLM_WORKER_MODEL = GROQ_API_KEY, GROQ_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = GROQ_EVALUATOR_MODEL, GROQ_FALLBACK_MODELS
     # Groq's free plan limits tokens per minute per model, so give each model its own share of the work.
-    LLM_LIGHT_ROLES = frozenset({"orchestrator", "evaluator", "optimizer"})
+    LLM_LIGHT_ROLES = frozenset({"evaluator", "optimizer", "voice"})
 else:
     LLM_BASE_URL = "https://openrouter.ai/api/v1"
     LLM_API_KEY, LLM_WORKER_MODEL = OPENROUTER_API_KEY, OPENROUTER_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = OPENROUTER_EVALUATOR_MODEL, OPENROUTER_FALLBACK_MODELS
-    LLM_LIGHT_ROLES = frozenset({"evaluator"})
+    LLM_LIGHT_ROLES = frozenset({"evaluator", "voice"})
 GRAPH_VERSION = "calendar-v1"
-PROMPT_VERSION = "2026-10-v1"
+PROMPT_VERSION = "2026-11-v2"
 MAX_MODEL_ATTEMPTS = 16
 MAX_WORK_ORDERS = 6
 MAX_OPTIMIZATION_ROUNDS = 2

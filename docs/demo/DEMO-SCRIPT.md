@@ -25,10 +25,10 @@ works locally.
 | 0:00 | Month view with the seeded week | "This is a student's week: lectures, lab, gym, a part-time job. Everything is hand-built, no calendar library." |
 | 0:45 | Type `Study group tomorrow at 6pm for 1 hour` in the bar, click **Fill details** | "It reads the sentence and asks me to confirm AM or PM and the length. It never guesses times." Click **Add to calendar**. |
 | 1:45 | Switch to **Week** and **Day** views | "Same events, different views. Overlaps are rejected, and weekly classes repeat." |
-| 2:15 | Open **AI Planner**, press **Speak**, say: "Add a study group tomorrow at 6 PM for one hour called Algorithms review", press **Stop** | "Voice becomes text first and is never sent automatically. I can edit it." Then press **Ask assistant**. |
-| 2:45 | While it works (a few seconds on Groq, about 40 on OpenRouter free models), watch the stage text | "The model only suggests. Code checks the times, overlaps and total hours." Mention that free models are slow. |
-| 3:30 | Approval card appears | "This is exactly what will change. Nothing is saved yet." Click **Approve**, then **View saved event**. |
-| 4:15 | Type: `Add a chemistry lab report session on Saturday` | "It asks what is missing instead of guessing." Answer: `4 PM for 2 hours`. When the card appears, click **Reject**. "Nothing was added. The human stays in control." |
+| 2:15 | Open **AI Planner**, press **Talk**, ask: "What's on my calendar tomorrow?" | It answers out loud from the real calendar. "It talks like a voice assistant, but every fact comes from the database." |
+| 2:45 | Press **Talk**: "Add a review of my project tomorrow at 9 AM" | It says "On it", then reads the draft aloud: "…from 9 to 10 AM. Length assumed: 1 hour, a typical meeting length. Should I save it?" "It fills in the obvious and tells me what it assumed." |
+| 3:30 | Press **Talk**: "Yes, save it" | "Done. It's on your calendar." "Spoken yes only works for new events; anything that removes events needs a tap." |
+| 4:15 | Type: `schedule gym at 7` | "It only asks when something is truly unclear, here AM or PM." Answer `PM`, then click **Reject** on the card. "Nothing was added. The human stays in control." |
 | 5:15 | Switch to Claude. Ask: "Using Predestination, what is free on Tuesday evening?" Then "Propose a 2 hour calculus revision at 5pm on Tuesday." Then "Create it." | "The same calendar is available to any AI app through MCP. It proposes first and only saves when I agree." Refresh the web calendar to show the new event. |
 | 6:15 | `docs/demo-architecture.md` diagram | "Free tools only. Next steps: Google Calendar, accounts, deployment." |
 | 6:45 | Questions | |

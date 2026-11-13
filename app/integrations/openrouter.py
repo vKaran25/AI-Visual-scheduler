@@ -107,15 +107,16 @@ def _rate_limit_pause(error):
     return None
 
 
-def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
-    prior = context.artifact(cache_key)
-    if prior:
-        return output_type.model_validate(prior["output"])
+NOT_CONNECTED = "The AI assistant is not connected yet (no model key is set). You can still add events yourself with Fill details."
+
+
+def _structured(role, prompt, data, output_type, attempts, before_attempt=None):
+    """Ask the active provider for a reply matching output_type, retrying and falling back across models.
+
+    Returns (output, response body, model id). before_attempt runs before every network attempt.
+    """
     if not config.LLM_API_KEY:
-        raise ModelUnavailable(
-            "The AI assistant is not connected yet (no model key is set). "
-            "You can still add events yourself with Fill details."
-        )
+        raise ModelUnavailable(NOT_CONNECTED)
     primary = config.LLM_EVALUATOR_MODEL if role in config.LLM_LIGHT_ROLES else config.LLM_WORKER_MODEL
     models = list(dict.fromkeys([primary] + config.LLM_FALLBACK_MODELS))
     strict = True
@@ -125,31 +126,18 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
                 verify_free(model_id)
             except ModelUnavailable:
                 continue
-        # Each network attempt consumes a durable budget, including failed attempts.
-        for attempt in range(ATTEMPTS_PER_MODEL):
+        for attempt in range(attempts):
             pause = 1.0
             with _semaphore:
-                context.reserve_attempt()
+                if before_attempt:
+                    before_attempt()
                 try:
                     headers, request_body = _request_parts(model_id, prompt, data, output_type, strict)
                     response = _client.post("/chat/completions", headers=headers, json=request_body)
                     response.raise_for_status()
                     body = response.json()
                     output = output_type.model_validate_json(body["choices"][0]["message"]["content"])
-                    context.save_artifact(
-                        cache_key,
-                        "model_call",
-                        {
-                            "output": output.model_dump(mode="json"),
-                            "role": role,
-                            "provider": config.LLM_PROVIDER,
-                            "requested_model": model_id,
-                            "actual_model": body.get("model"),
-                            "usage": body.get("usage", {}),
-                            "prompt_version": config.PROMPT_VERSION,
-                        },
-                    )
-                    return output
+                    return output, body, model_id
                 except (ValidationError, ValueError, KeyError, httpx.HTTPError) as error:
                     pause = _rate_limit_pause(error) or pause
                     status = error.response.status_code if isinstance(error, httpx.HTTPStatusError) else None
@@ -163,14 +151,40 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
                         type(error).__name__,
                         " ".join((error.response.text if status else str(error)).split()),
                     )
-                    if (
-                        config.LLM_PROVIDER == "groq"
-                        and isinstance(error, httpx.HTTPStatusError)
-                        and error.response.status_code == 400
-                    ):
+                    if config.LLM_PROVIDER == "groq" and status == 400:
                         strict = False  # this model rejected the strict schema; use best-effort mode
-            if attempt < ATTEMPTS_PER_MODEL - 1:
+            if attempt < attempts - 1:
                 time.sleep(pause)
     raise ModelUnavailable(
         "The AI models could not complete this request right now. Your progress is saved; try again shortly."
     )
+
+
+def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
+    """Durable call inside a worker run: cached per turn, and every attempt consumes the run budget."""
+    prior = context.artifact(cache_key)
+    if prior:
+        return output_type.model_validate(prior["output"])
+    output, body, model_id = _structured(
+        role, prompt, data, output_type, ATTEMPTS_PER_MODEL, before_attempt=context.reserve_attempt
+    )
+    context.save_artifact(
+        cache_key,
+        "model_call",
+        {
+            "output": output.model_dump(mode="json"),
+            "role": role,
+            "provider": config.LLM_PROVIDER,
+            "requested_model": model_id,
+            "actual_model": body.get("model"),
+            "usage": body.get("usage", {}),
+            "prompt_version": config.PROMPT_VERSION,
+        },
+    )
+    return output
+
+
+def respond(role: str, prompt: str, data: dict, output_type):
+    """Quick conversational call outside a worker run (voice turns). Nothing is cached; no calendar access."""
+    output, _, _ = _structured(role, prompt, data, output_type, attempts=2)
+    return output

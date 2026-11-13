@@ -1,5 +1,8 @@
 """Combined orchestrator-worker and evaluator-optimizer LangGraph."""
 
+import re
+from datetime import date, timedelta
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send, interrupt
 from sqlmodel import Session
@@ -10,6 +13,8 @@ from app.agents.state import AgentState, WorkerState
 from app.core.config import MAX_OPTIMIZATION_ROUNDS
 from app.db.models import Draft, GoogleConnection, User, new_id
 from app.db.session import engine
+from app.domain.ambiguity import has_duration
+from app.domain.categories import classify, plus_minutes, prompt_table
 from app.domain.contracts import (
     Action,
     Constraints,
@@ -17,6 +22,7 @@ from app.domain.contracts import (
     RepairPlan,
     Source,
     Understanding,
+    Window,
     WorkerOutput,
     WorkOrder,
     validate_work_orders,
@@ -26,6 +32,24 @@ from app.integrations import openrouter, research
 from app.integrations.google_sync import refresh_for_dates
 from app.runtime import context as execution
 from app.services import draft_service, scheduler_service
+
+
+def upcoming_dates():
+    """Weekday names to dates for the next week, so the model never has to calculate dates itself."""
+    today = date.fromisoformat(snapshot_now()[:10])
+    names = {0: "today", 1: "tomorrow"}
+    return {
+        names.get(i, (today + timedelta(days=i)).strftime("%A")): (today + timedelta(days=i)).isoformat()
+        for i in range(8)
+    }
+
+
+def snapshot_now():
+    from app.domain.time import local_now
+
+    with Session(engine) as db:
+        user = db.get(User, execution.current().user_id)
+        return local_now(user.timezone).isoformat()
 
 
 def load_context(state):
@@ -40,6 +64,8 @@ def load_context(state):
             "request": payload["prompt"],
             "start_after": payload.get("start_after"),
             "slack": payload.get("slack", 0),
+            "scheduling_defaults": prompt_table(),
+            "upcoming_dates": upcoming_dates(),
         },
         "results": {"__reset__": True},
         "orders": [],
@@ -51,6 +77,7 @@ def load_context(state):
         "seen_candidates": [],
         "seen_issues": [],
         "result": {},
+        "assumptions": [],
     }
 
 
@@ -91,8 +118,91 @@ def friendly_missing(item):
     return FRIENDLY_MISSING.get(key) or str(item).replace("_", " ")
 
 
+# Details a student rarely states; they get a default that is shown in the draft instead of a question.
+DEFAULTABLE = re.compile(
+    r"duration|length|how long|end[ _]?time|session|date|\bday|deadline|availab|daily hours|hours per|range",
+    re.I,
+)
+DAY_START, DAY_END = "08:00", "21:00"
+
+
+def nice_minutes(minutes):
+    hours, rest = divmod(int(minutes), 60)
+    if hours and rest:
+        return f"{hours}h {rest}m"
+    return f"{hours}h" if hours else f"{rest} min"
+
+
+# A clock time ("9 am", "at 9", "9:30") means one fixed event, not a flexible study plan...
+CLOCK_TIME = re.compile(
+    r"\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)(?!\w)|\bat\s+\d{1,2}\b|\b\d{1,2}:\d{2}\b", re.I
+)
+# ...unless the student clearly asks for a plan or an amount of study spread over time.
+PLAN_WORDS = re.compile(r"\bplan\b|\bsessions?\b|\b\d+(?:\.\d+)?\s*(?:hours?|hrs?)\s+(?:of|for)\b", re.I)
+
+
+def apply_defaults(understood, context):
+    """Fill rarely-stated details for plans and events. Returns (understanding, notes, added orders)."""
+    request = context["request"]
+    if understood.intent == "plan" and CLOCK_TIME.search(request) and not PLAN_WORDS.search(request):
+        understood = understood.model_copy(update={"intent": "action", "work_orders": []})
+    if understood.intent not in ("plan", "action"):
+        return understood, [], None
+    notes = []
+    kept = [item for item in understood.missing if not DEFAULTABLE.search(str(item))]
+    update = {"missing": kept}
+    orders = None
+    if understood.intent == "plan":
+        c = understood.constraints
+        today = date.fromisoformat(str(context["now"])[:10])
+        start = c.start_date or (min(today, c.end_date) if c.end_date else today)
+        end = c.end_date or start + timedelta(days=6)
+        values = {"start_date": start, "end_date": end, "session_minutes": c.session_minutes or 60}
+        if not c.availability:
+            values["availability"] = [
+                Window(date=start + timedelta(days=i), start=DAY_START, end=DAY_END)
+                for i in range((end - start).days + 1)
+            ]
+            notes.append("Free time between 8 AM and 9 PM each day, around your existing events.")
+        if not c.start_date or not c.end_date:
+            notes.append(f"Dates assumed: {start:%a %d %b} to {end:%a %d %b}.")
+        if not c.session_minutes:
+            notes.append("Sessions of 1 hour.")
+        if c.total_minutes and not c.days_count and not c.availability:
+            # Spread sessions over separate days instead of packing them into one.
+            sessions = -(-c.total_minutes // values["session_minutes"])
+            values["days_count"] = max(1, min(sessions, (end - start).days + 1))
+            if values["days_count"] > 1:
+                notes.append(f"Spread over {values['days_count']} days.")
+        update["constraints"] = Constraints.model_validate({**c.model_dump(), **values})
+        if not understood.work_orders and c.total_minutes:
+            orders = [
+                WorkOrder(
+                    id="plan",
+                    worker="planning",
+                    objective=context["request"],
+                    duration_budget=c.total_minutes,
+                )
+            ]
+    elif not understood.work_orders:
+        orders = [WorkOrder(id="action", worker="action", objective=context["request"])]
+    if orders:
+        update["work_orders"] = orders
+    return understood.model_copy(update=update), notes, orders
+
+
 def validate_requirements(state):
-    understood = Understanding.model_validate(state["understanding"])
+    understood, notes, added = apply_defaults(
+        Understanding.model_validate(state["understanding"]), state["context"]
+    )
+    base = {"understanding": understood.model_dump(mode="json"), "assumptions": notes}
+    if added:
+        base["orders"] = [o.model_dump(mode="json") for o in added]
+        base["expected"] = {o.id: 0 for o in added}
+    return {**base, **_requirements_route(understood, state)}
+
+
+def _requirements_route(understood, state):
     missing = list(understood.missing)
     if understood.intent in ("plan", "action", "availability") and not state["context"]["timezone_confirmed"]:
         missing.append("Confirm your calendar timezone using the timezone button, then reply to continue.")
@@ -209,8 +319,27 @@ def ready_workers(state):
 
 def scoped_context(source, order):
     keys = {
-        "planning": ("request", "follow_up", "answers", "now", "timezone", "preferences"),
-        "action": ("request", "follow_up", "answers", "now", "timezone", "calendar", "presets"),
+        "planning": (
+            "request",
+            "follow_up",
+            "answers",
+            "now",
+            "timezone",
+            "preferences",
+            "scheduling_defaults",
+            "upcoming_dates",
+        ),
+        "action": (
+            "request",
+            "follow_up",
+            "answers",
+            "now",
+            "timezone",
+            "calendar",
+            "presets",
+            "scheduling_defaults",
+            "upcoming_dates",
+        ),
         "research": ("request", "follow_up", "answers", "now"),
         "conversation": ("request", "follow_up", "answers", "now", "timezone", "calendar", "summary"),
     }
@@ -302,6 +431,24 @@ def validate_candidate(state):
         if output.answer:
             answers.append(output.answer)
         sources.extend(s.model_dump() for s in output.sources)
+    notes = list(state.get("assumptions", []))
+    said = " ".join([state["context"]["request"]] + state["context"].get("answers", []))
+    if state["understanding"]["intent"] == "action" and not has_duration(said):
+        # No length given: use the typical length for this kind of event and say so in the draft.
+        defaulted = []
+        for action in actions:
+            if action.kind == "create" and action.event:
+                category = classify(f"{action.event.label} {said}")
+                update = {"end": plus_minutes(action.event.start, category.minutes)}
+                if action.event.color == "#397969":
+                    update["color"] = category.color
+                action = action.model_copy(update={"event": action.event.model_copy(update=update)})
+                notes.append(
+                    f"Length assumed: {nice_minutes(category.minutes)} (a typical {category.name.lower()} length). "
+                    "Reply with a different length to change it."
+                )
+            defaulted.append(action)
+        actions = defaulted
     if state["understanding"]["intent"] == "action" and any(a.kind == "create" for a in actions):
         from app.domain.ambiguity import missing_event_details
 
@@ -365,6 +512,8 @@ def validate_candidate(state):
                 if actions
                 else {"operations": [], "preview": {}, "hash": draft_service.digest(answers)}
             )
+            if actions and notes:
+                prepared["preview"]["notes"] = list(dict.fromkeys(notes))
         except ValueError as exc:
             return {
                 "route": "clarify",

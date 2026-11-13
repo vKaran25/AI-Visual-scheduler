@@ -27,7 +27,7 @@ def groq(monkeypatch):
     monkeypatch.setattr(config, "LLM_WORKER_MODEL", "openai/gpt-oss-120b")
     monkeypatch.setattr(config, "LLM_EVALUATOR_MODEL", "openai/gpt-oss-20b")
     monkeypatch.setattr(config, "LLM_FALLBACK_MODELS", ["openai/gpt-oss-20b"])
-    monkeypatch.setattr(config, "LLM_LIGHT_ROLES", frozenset({"orchestrator", "evaluator", "optimizer"}))
+    monkeypatch.setattr(config, "LLM_LIGHT_ROLES", frozenset({"evaluator", "optimizer", "voice"}))
     monkeypatch.setattr(openrouter.context, "artifact", lambda key: saved.get(key))
     monkeypatch.setattr(openrouter.context, "reserve_attempt", lambda: None)
     monkeypatch.setattr(
@@ -128,7 +128,7 @@ def test_openrouter_requests_keep_the_price_ceiling_and_headers(monkeypatch):
 def test_groq_splits_roles_across_models_to_share_the_token_limit(groq):
     use, _, _, calls = groq
     use(lambda request: httpx.Response(200, json=completion('{"answer": "ok"}')))
-    openrouter.generate("orchestrator", "s", {}, Reply, "key-7")
+    openrouter.generate("evaluator", "s", {}, Reply, "key-7")
     openrouter.generate("planning", "s", {}, Reply, "key-8")
     assert [json.loads(call.content)["model"] for call in calls] == [
         "openai/gpt-oss-20b",
