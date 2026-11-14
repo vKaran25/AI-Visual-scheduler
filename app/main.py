@@ -1,4 +1,6 @@
+import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -20,7 +22,20 @@ async def lifespan(app: FastAPI):
     if COOKIE_SECURE and JWT_SECRET_KEY == "local-development-only-change-before-deployment":
         raise RuntimeError("Set a private JWT_SECRET_KEY before HTTPS deployment")
     verify_schema()
+    stop, worker_thread = threading.Event(), None
+    if os.getenv("RUN_WORKER_IN_PROCESS", "").lower() == "true":
+        # One-service deployments (for example Render's free plan, which has no background workers).
+        from app.runtime import worker
+
+        logging.basicConfig(level=logging.INFO)
+        worker_thread = threading.Thread(
+            target=worker.serve, args=(stop,), name="in-process-worker", daemon=True
+        )
+        worker_thread.start()
     yield
+    stop.set()
+    if worker_thread:
+        worker_thread.join(timeout=10)
 
 
 app = FastAPI(title="Predestination - AI Visual Scheduler", lifespan=lifespan)

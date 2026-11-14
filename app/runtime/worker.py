@@ -165,26 +165,35 @@ def sync_loop(stop):
         stop.wait(0.25 if worked else 2)
 
 
-def main():
-    logging.basicConfig(level=logging.INFO)
-    verify_schema()
-    stop = threading.Event()
+def serve(stop):
+    """Run agent runs and Google sync until `stop` is set. Used by the worker process and, optionally, the API."""
     sync_thread = threading.Thread(target=sync_loop, args=(stop,), daemon=True)
     sync_thread.start()
     try:
         with checkpoint_store() as saver:
             graph = build_graph(saver)
-            while True:
+            while not stop.is_set():
                 try:
                     worked = run_once(graph)
                 except Exception:
                     logger.exception("Worker iteration failed; expired leases will be reclaimed")
                     worked = False
                 if not worked:
-                    time.sleep(1)
+                    stop.wait(1)
     finally:
         stop.set()
         sync_thread.join(timeout=15)
+
+
+def main():
+    import signal
+
+    logging.basicConfig(level=logging.INFO)
+    verify_schema()
+    stop = threading.Event()
+    # On deploys the platform sends SIGTERM: finish the current step, then exit; leases cover anything unfinished.
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    serve(stop)
 
 
 if __name__ == "__main__":

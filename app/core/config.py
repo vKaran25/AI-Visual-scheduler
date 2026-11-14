@@ -14,7 +14,10 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = "lax"
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+# Render provides RENDER_EXTERNAL_URL, so a one-click deploy needs no manual URL setting.
+APP_BASE_URL = (
+    os.getenv("APP_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://127.0.0.1:8000"
+).rstrip("/")
 CORS_ORIGINS = [
     s.strip().rstrip("/") for s in os.getenv("CORS_ORIGINS", APP_BASE_URL).split(",") if s.strip()
 ]
