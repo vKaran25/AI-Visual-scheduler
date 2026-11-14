@@ -191,7 +191,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
     verify_schema()
     stop = threading.Event()
-    # On deploys the platform sends SIGTERM: finish the current step, then exit; leases cover anything unfinished.
+    # On SIGTERM finish the current step, then exit; leases cover anything unfinished.
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     serve(stop)
 

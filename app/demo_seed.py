@@ -2,7 +2,7 @@
 
 Creates (or resets) a local demo account and fills the current week. Safe to run repeatedly:
 it replaces that account's non-Google events each time. Demo account only; never use these
-credentials on a deployed instance.
+credentials on a shared or public instance.
 """
 
 import argparse

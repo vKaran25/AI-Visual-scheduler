@@ -42,8 +42,6 @@ In a second terminal:
 
 Open [the sign-in page](http://127.0.0.1:8000/home). Confirm the calendar timezone before planning. Manual scheduling works without a model key; the assistant needs `OPENROUTER_API_KEY`.
 
-For a Docker-based local PostgreSQL setup, copy `.env.example` to `.env` and run `docker compose up --build`. The migration service runs before the API and worker.
-
 ## What the assistant does
 
 - Creates study plans and event proposals, answers availability questions, and proposes edits, deletions, and preset operations.
@@ -76,7 +74,7 @@ frontend/
   assets/js/       Bootstrap, planner, calendar, durable agent UI, landing animation
 migrations/        Reviewed, versioned Alembic schema revisions
 tests/             Domain, PostgreSQL, graph recovery, integration, frontend checks
-docs/              Architecture, API, migration and deployment instructions
+docs/              Architecture, API, migration notes, decisions and demo material
 ```
 
 ## Verification
@@ -96,4 +94,4 @@ The graph tests run the actual LangGraph and PostgreSQL checkpointer with mocked
 - [Architecture and agent contracts](docs/architecture.md)
 - [API and UI contracts](docs/api.md)
 - [Database migration tutorial](docs/database.md)
-- [Deployment and operations](docs/deployment.md)
+- [Prototype architecture and MCP server](docs/demo-architecture.md)

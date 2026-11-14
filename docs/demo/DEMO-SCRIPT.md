@@ -3,7 +3,7 @@
 **One-line pitch:** "Predestination is a calendar for students. You tell it what you need to get done, by typing
 or speaking, and it finds the time around your classes. It never changes your calendar until you approve."
 
-Run it from your laptop (not the deployed site): it avoids cold starts and Wi-Fi problems, and the MCP part only
+Run it from your laptop: it avoids Wi-Fi problems, and the MCP part only
 works locally.
 
 ## 30 minutes before
@@ -30,7 +30,7 @@ works locally.
 | 3:30 | Press **Talk**: "Yes, save it" | "Done. It's on your calendar." "Spoken yes only works for new events; anything that removes events needs a tap." |
 | 4:15 | Type: `schedule gym at 7` | "It only asks when something is truly unclear, here AM or PM." Answer `PM`, then click **Reject** on the card. "Nothing was added. The human stays in control." |
 | 5:15 | Switch to Claude. Ask: "Using Predestination, what is free on Tuesday evening?" Then "Propose a 2 hour calculus revision at 5pm on Tuesday." Then "Create it." | "The same calendar is available to any AI app through MCP. It proposes first and only saves when I agree." Refresh the web calendar to show the new event. |
-| 6:15 | `docs/demo-architecture.md` diagram | "Free tools only. Next steps: Google Calendar, accounts, deployment." |
+| 6:15 | `docs/demo-architecture.md` diagram | "Free tools only. Next steps: Google Calendar, accounts, putting it online." |
 | 6:45 | Questions | |
 
 **AI limits on Groq's free plan:** it allows about 8,000 tokens a minute per model, so leave **30 to 60 seconds between AI

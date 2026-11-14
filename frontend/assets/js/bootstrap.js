@@ -1,4 +1,4 @@
-// Production uses the Netlify /api proxy; local FastAPI serves the same paths.
+// The API is served from the same origin as the pages, so paths are relative.
 window.API_BASE_URL = '';
 window.LOGIN_URL = '/home';
 window.PLANNER_URL = '/';

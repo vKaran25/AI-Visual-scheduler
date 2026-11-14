@@ -12,10 +12,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=2,
-    connect_args={
-        "connect_timeout": 10,
-        **({"prepare_threshold": None} if "-pooler" in DATABASE_URL else {}),
-    },
+    connect_args={"connect_timeout": 10},
 )
 
 

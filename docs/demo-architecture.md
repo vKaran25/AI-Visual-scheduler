@@ -63,5 +63,5 @@ Claude Desktop (`claude_desktop_config.json`):
 ## Not in the prototype (planned)
 
 Google Calendar sync, accounts with password reset, paid or no-training models, proposals from MCP
-appearing in the web approval queue, rate limits and quotas, deployment to Render, Neon and Netlify.
+appearing in the web approval queue, rate limits and quotas, and deployment to a cloud provider.
 See the production plan for the full list.

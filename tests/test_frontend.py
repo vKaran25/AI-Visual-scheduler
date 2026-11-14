@@ -32,5 +32,3 @@ def test_ui_uses_resumable_runs_and_revision_bound_approval():
     assert "textContent" in agent
     bootstrap = (ROOT / "frontend/assets/js/bootstrap.js").read_text()
     assert "window.API_BASE_URL = ''" in bootstrap
-    config = (ROOT / "netlify.toml").read_text()
-    assert config.index("/api/*") < config.index('from = "/*"')
