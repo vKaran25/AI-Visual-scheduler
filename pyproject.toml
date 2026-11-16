@@ -7,7 +7,10 @@ description = "Durable calendar assistant with LangGraph and PostgreSQL"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:langsmith_plugin"
-markers = ["postgres: requires a dedicated PostgreSQL test database"]
+markers = [
+    "postgres: requires a dedicated PostgreSQL test database",
+    "teacher_demo: runs against the running local app (see docs/demo/TEACHER-SHOWCASE.md)",
+]
 
 [tool.ruff]
 target-version = "py312"

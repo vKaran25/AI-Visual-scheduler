@@ -1,6 +1,7 @@
 """One-command local development without Docker: embedded PostgreSQL + API + worker.
 
     python scripts/dev.py up        start database, migrate, API (8000) and worker
+    python scripts/dev.py up --lan  same, reachable from other devices on this Wi-Fi
     python scripts/dev.py test ...  run pytest against the local *_test database
     python scripts/dev.py seed      load the demo student calendar
     python scripts/dev.py mcp       run the MCP server (stdio)
@@ -12,6 +13,7 @@ The database lives in .pgdata/ (git-ignored) and keeps running between commands.
 
 import os
 import pathlib
+import socket
 import subprocess
 import sys
 import time
@@ -47,18 +49,37 @@ def run(args: list[str], env: dict[str, str]) -> int:
     return subprocess.call([PY, *args], cwd=ROOT, env=env)
 
 
-def up() -> None:
+def lan_address() -> str:
+    """This laptop's address on the local network. A UDP socket sends nothing; it only asks which interface it would use."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("203.0.113.1", 80))  # documentation range, never routed
+        return probe.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        probe.close()
+
+
+def up(lan: bool = False) -> None:
     env = env_for_app(database())
     if run(["-m", "app.db.migrate"], env):
         sys.exit("Migration failed")
+    host, address = "127.0.0.1", "127.0.0.1"
+    if lan:
+        # Listen on all interfaces and accept saves from this laptop's network address too.
+        host, address = "0.0.0.0", lan_address()
+        env["CORS_ORIGINS"] = ",".join(["http://127.0.0.1:8000", f"http://{address}:8000"])
     api = subprocess.Popen(
-        [PY, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"], cwd=ROOT, env=env
+        [PY, "-m", "uvicorn", "app.main:app", "--host", host, "--port", "8000"], cwd=ROOT, env=env
     )
     worker = subprocess.Popen([PY, "-m", "app.runtime.worker"], cwd=ROOT, env=env)
     print(
-        "\nPredestination is starting: http://127.0.0.1:8000/home  (use 127.0.0.1, not localhost)\n",
+        "\nPredestination is starting: http://127.0.0.1:8000/home  (use 127.0.0.1, not localhost)",
         flush=True,
     )
+    if lan:
+        print(f"Other devices on this Wi-Fi open: http://{address}:8000/home\n", flush=True)
     try:
         while api.poll() is None and worker.poll() is None:
             time.sleep(1)
@@ -73,7 +94,7 @@ def up() -> None:
 def main() -> None:
     command, rest = (sys.argv[1] if len(sys.argv) > 1 else "up"), sys.argv[2:]
     if command == "up":
-        up()
+        up(lan="--lan" in rest)
     elif command == "db":
         print(database())
     elif command == "test":
