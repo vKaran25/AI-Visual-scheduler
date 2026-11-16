@@ -116,7 +116,7 @@
     try {
       const response = await fetch(window.API_BASE_URL + '/api/voice/turn', {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: text, session_id: currentSessionId || null, request_id: crypto.randomUUID() })
+        body: JSON.stringify({ transcript: text, session_id: currentSessionId || null, request_id: window.newId() })
       });
       if (response.status === 401) { window.location.href = window.LOGIN_URL; return; }
       if (!response.ok) throw new Error(await readApiError(response, 'I could not answer that. Try again or type it.'));

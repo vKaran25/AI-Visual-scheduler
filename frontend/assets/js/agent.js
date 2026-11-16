@@ -4,7 +4,7 @@ window.agentUI = (() => {
   let pendingRequest = null, deciding = false;
   const terminal = new Set(['completed','failed','cancelled']);
   const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  function uid() { return crypto.randomUUID(); }
+  function uid() { return window.newId(); }
   async function request(path, method='GET', body) {
     const response = await fetch(window.API_BASE_URL + path, {
       method, credentials:'include', headers: body ? {'Content-Type':'application/json'} : {},
