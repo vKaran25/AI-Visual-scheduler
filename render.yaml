@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+services:
+  - type: web
+    name: predestination-demo
+    runtime: python
+    plan: free
+    branch: demo-prototype
+    autoDeployTrigger: "off"
+    buildCommand: python -m pip install -r requirements.txt -c requirements.lock
+    startCommand: python scripts/start_render.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.12"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false

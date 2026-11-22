@@ -1,6 +1,39 @@
-# Predestination — durable AI calendar
+# Predestination
+
+**An AI calendar for turning spoken or typed requests into a schedule you can review and approve.**
+
+[Try it locally](#quick-local-demo-no-docker-no-accounts) · [Deploy on Render](docs/deployment.md) · [Connect an MCP client](docs/demo-architecture.md#the-mcp-server)
+
+![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1)
+
+<!-- Add the calendar hero and assistant proposal screenshots here when available. Store them in docs/screenshots/. -->
 
 Predestination combines a LangGraph orchestrator and specialist workers with a bounded evaluator–optimizer loop. PostgreSQL stores calendar records, approvals, jobs, graph checkpoints, and Google synchronization state.
+
+| Use Predestination to | How it works |
+| --- | --- |
+| Plan a week visually | Switch between month, week, and day views, and add blocks manually. |
+| Schedule by voice or text | Review the transcript or type a request, then resolve any questions the assistant asks. |
+| Stay in control of changes | Review the proposed dates, times, and conflicts before approving a draft. |
+| Use the calendar from an MCP client | Run the local MCP server to query events and availability or propose a change. |
+
+## Hosted demo
+
+Render serves the planner and API from one HTTPS URL and runs the assistant worker alongside them. Neon stores the calendar and pending work. Follow the [deployment guide](docs/deployment.md) for the Free plan setup and dashboard steps.
+
+```mermaid
+flowchart LR
+  Browser["Browser · calendar, text, and voice"] --> API
+  subgraph Render["Render Free web service"]
+    API["FastAPI · planner and API"]
+    Worker["Assistant worker"]
+  end
+  API --> DB[("Neon PostgreSQL")]
+  Worker --> DB
+  Worker --> Model["Groq or OpenRouter"]
+```
 
 ## Quick local demo (no Docker, no accounts)
 
