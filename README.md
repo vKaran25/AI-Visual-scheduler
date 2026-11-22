@@ -8,7 +8,13 @@
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
 ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1)
 
-<!-- Add the calendar hero and assistant proposal screenshots here when available. Store them in docs/screenshots/. -->
+![Predestination week view showing a student schedule with lectures, a lab, and a part-time job](docs/screenshots/calendar-week.png)
+
+*See a week of classes and commitments at a glance.*
+
+![AI Planner proposing a Python practice session with Approve and Reject controls](docs/screenshots/planner-approval.png)
+
+*Review a proposed event alongside the calendar before saving it.*
 
 Predestination combines a LangGraph orchestrator and specialist workers with a bounded evaluator–optimizer loop. PostgreSQL stores calendar records, approvals, jobs, graph checkpoints, and Google synchronization state.
 
