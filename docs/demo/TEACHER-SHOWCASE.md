@@ -73,9 +73,9 @@ the free limit. Leave them out of the live demo.
 | 0:00 | Month view with the seeded week | "This is a student's week: lectures, a lab, gym, a part-time job. I need to find study time around all of it." |
 | 0:45 | Type `Study group tomorrow at 6pm for 1 hour`, click **Fill details**, then **Add to calendar** | "I type it in plain words. It asks me to confirm AM or PM, and it never guesses a time." |
 | 1:45 | Switch to Week and Day views | "Same events, different views. Overlaps are rejected, and weekly classes repeat." |
-| 2:15 | AI Planner: press **Talk**, say "What's on my calendar tomorrow?" | "It answers from my real calendar, out loud." |
-| 2:45 | Press **Talk**: "Add a review of my project tomorrow at 9 AM" | "It fills in the obvious and tells me what it assumed." |
-| 3:30 | Press **Talk**: "Yes, save it" | "Nothing is saved until I say yes. A spoken yes works for new events only." |
+| 2:15 | AI Planner: type "What's on my calendar tomorrow?" | "It answers from my real calendar." |
+| 2:45 | Type: "Add a review of my project tomorrow at 9 AM" | "It fills in the obvious and tells me what it assumed." |
+| 3:30 | Type: "Yes, save it" | "Nothing is saved until I say yes, and removals always need a tap." |
 | 4:15 | Type `schedule gym at 7`, answer `PM`, then click **Reject** | "It only asks when something is truly unclear. I can say no, and nothing changes." |
 | 5:15 | Open Claude and ask: "Using Predestination, what is free on Tuesday evening?" | "The same calendar works in other AI apps through MCP. It proposes first, and saves only when I agree." |
 | 6:00 | Show `docs/demo-architecture.md` | "Free tools only. Next: Google Calendar, accounts, putting it online." |
@@ -87,7 +87,6 @@ Keep the **Fill details** path as the safe fallback. It does not use AI and alwa
 | Problem | What to do |
 |---|---|
 | The assistant takes more than 90 seconds | Say "free AI models are busy sometimes", press **Cancel request**, and carry on with **Fill details**. |
-| Voice does not work | Type the same sentence and say "voice depends on the browser". |
 | Saves fail or show "Untrusted request origin" | You opened the app through `localhost`. Use the laptop address shown by `dev.py up --lan`. |
 | Another device cannot connect | Check the firewall rule, that the Wi-Fi is Private, and the address from `ipconfig`. |
 | Calendar looks empty | Run `dev.py seed` in a second terminal and refresh. |

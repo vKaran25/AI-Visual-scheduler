@@ -196,7 +196,8 @@
       body.append(column);
     });
     container.replaceChildren(header,body);
-    container.scrollTop = weekScrollNeeded ? 420 : scroll;
+    // 07:00 is 420px down; a little less keeps the 07:00 label from being clipped at the top edge.
+    container.scrollTop = weekScrollNeeded ? 408 : scroll;
     weekScrollNeeded = false;
   }
   function renderCalendar() { if (view === 'month') renderMonth(); else if (view === 'week') renderWeek(); }

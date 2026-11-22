@@ -7,7 +7,7 @@ const mainContent  = document.getElementById('main-content');
 
 async function checkAuth() {
   try { const r = await fetch(window.API_BASE_URL + '/api/me', { credentials: 'include' }); if (r.ok) { window.location.href = window.PLANNER_URL; return; } } catch (e) {}
-  mainContent.style.display = 'flex';
+  mainContent.style.display = ''; // let the stylesheet's grid lay out the page
 }
 async function readApiError(response, fallback='Request failed') {
   try {

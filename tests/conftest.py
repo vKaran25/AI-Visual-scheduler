@@ -15,6 +15,18 @@ os.environ["LLM_PROVIDER"] = "openrouter"
 os.environ["GOOGLE_TOKEN_ENCRYPTION_KEY"] = "Z2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2c="
 
 
+@pytest.fixture(autouse=True)
+def fresh_sign_in_limits():
+    """Sign-in and sign-up limits are process-wide; every test starts with empty counters."""
+    from app.core import rate_limit
+
+    for limit in rate_limit.ALL_LIMITS:
+        limit.reset()
+    yield
+    for limit in rate_limit.ALL_LIMITS:
+        limit.reset()
+
+
 @pytest.fixture(scope="session")
 def postgres():
     from sqlalchemy import text

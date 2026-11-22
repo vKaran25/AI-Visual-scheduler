@@ -6,10 +6,18 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
-from app.api import agent, auth, evals, google, memory, presets, scheduler, voice
-from app.core.config import APP_BASE_URL, COOKIE_SECURE, CORS_ORIGINS, JWT_SECRET_KEY
-from app.db.session import verify_schema
+from app.api import agent, auth, evals, google, memory, presets, scheduler
+from app.core.config import (
+    APP_BASE_URL,
+    COOKIE_SECURE,
+    CORS_ORIGINS,
+    JWT_SECRET_GENERATED,
+    JWT_SECRET_KEY,
+    check_jwt_secret,
+)
+from app.db.session import engine, verify_schema
 
 if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -17,8 +25,7 @@ if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if COOKIE_SECURE and JWT_SECRET_KEY == "local-development-only-change-before-deployment":
-        raise RuntimeError("Set a private JWT_SECRET_KEY before serving over HTTPS")
+    check_jwt_secret(JWT_SECRET_KEY, generated=JWT_SECRET_GENERATED, cookie_secure=COOKIE_SECURE)
     verify_schema()
     yield
 
@@ -45,6 +52,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.get("/health")
 def health():
+    """Liveness and database reachability. The assistant worker is not checked here."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok"}
 
 
@@ -65,7 +78,6 @@ app.include_router(memory.router)
 app.include_router(agent.router)
 app.include_router(google.router)
 app.include_router(evals.router)
-app.include_router(voice.router)
 
 
 @app.middleware("http")

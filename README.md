@@ -1,6 +1,6 @@
 # Predestination
 
-**An AI calendar for turning spoken or typed requests into a schedule you can review and approve.**
+**An AI calendar for turning typed requests into a schedule you can review and approve.**
 
 [Try it locally](#quick-local-demo-no-docker-no-accounts) · [Deploy on Render](docs/deployment.md) · [Connect an MCP client](docs/demo-architecture.md#the-mcp-server)
 
@@ -21,7 +21,7 @@ Predestination combines a LangGraph orchestrator and specialist workers with a b
 | Use Predestination to | How it works |
 | --- | --- |
 | Plan a week visually | Switch between month, week, and day views, and add blocks manually. |
-| Schedule by voice or text | Review the transcript or type a request, then resolve any questions the assistant asks. |
+| Schedule from a typed request | Describe what you need, then resolve any questions the assistant asks. |
 | Stay in control of changes | Review the proposed dates, times, and conflicts before approving a draft. |
 | Use the calendar from an MCP client | Run the local MCP server to query events and availability or propose a change. |
 
@@ -31,7 +31,7 @@ Render serves the planner and API from one HTTPS URL and runs the assistant work
 
 ```mermaid
 flowchart LR
-  Browser["Browser · calendar, text, and voice"] --> API
+  Browser["Browser · calendar and text"] --> API
   subgraph Render["Render Free web service"]
     API["FastAPI · planner and API"]
     Worker["Assistant worker"]
@@ -51,7 +51,7 @@ py -3 -m venv .venv
 ```
 
 Open <http://127.0.0.1:8000/home> (use `127.0.0.1`, not `localhost`) and sign in as
-`student@example.com` (password: `DEMO_PASSWORD` in `app/demo_seed.py`). Manual scheduling, voice and the MCP
+`student@example.com` (password: `DEMO_PASSWORD` in `app/demo_seed.py`). Manual scheduling and the MCP
 server work without any key; add a free `OPENROUTER_API_KEY` to `.env` for the assistant. Run the tests with
 `scripts\dev.py test`, and the MCP server with `scripts\dev.py mcp`
 (see [the prototype architecture](docs/demo-architecture.md)).

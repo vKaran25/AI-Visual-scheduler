@@ -56,6 +56,8 @@ class User(SQLModel, table=True):
     timezone: str = "UTC"
     timezone_confirmed: bool = False
     calendar_revision: int = 0
+    # Bumped on logout; tokens carry the version they were issued under and stop working when it changes.
+    token_version: int = 0
     created_at: datetime = timestamp()
 
 

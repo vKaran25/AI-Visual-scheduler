@@ -38,7 +38,7 @@ The Blueprint creates one **Free** Render web service. FastAPI serves the planne
 1. Wait for the service to show **Live**. Open its public URL followed by `/health` and check that it returns `{"status":"ok"}`.
 2. Open `/home` on that same URL. Create a fresh demo account and confirm the calendar timezone.
 3. Add a manual event, refresh the page, and verify it stayed on the calendar.
-4. Submit a typed assistant request. Review the proposed event, approve it, and refresh to confirm it was saved once. Repeat the flow with microphone permission enabled in desktop Chrome.
+4. Submit a typed assistant request. Review the proposed event, approve it, and refresh to confirm it was saved once.
 5. If the app fails to start, check **Logs** for a migration failure or a worker exit. If a request stays queued, check that the worker is running. If it fails during planning, check the provider key and model availability.
 
 ## Redeploy or pause

@@ -1,7 +1,7 @@
 """Demo readiness check against the RUNNING local app.  Usage:
 
     python scripts/dev.py check            fast checks, no AI (about 30 seconds)
-    python scripts/dev.py check --ai       also exercises the assistant and voice agent (about 4 minutes)
+    python scripts/dev.py check --ai       also exercises the assistant (about 4 minutes)
 
 Run `python scripts/dev.py up` in another terminal first. Uses the demo account from app/demo_seed.py and
 removes anything it creates. The --ai checks pause between requests to respect Groq's free token limit.
@@ -120,14 +120,6 @@ def free_time():
     return f"first slot {result['allocated'][0]['date']} {result['allocated'][0]['start']}"
 
 
-@check("Voice endpoint rejects empty speech")
-def voice_validation():
-    assert (
-        client.post("/api/voice/turn", json={"transcript": "", "request_id": uuid.uuid4().hex}).status_code
-        == 422
-    )
-
-
 @check("MCP server lists its tools and checks an event (stdio)")
 def mcp_tools():
     from mcp import ClientSession, StdioServerParameters
@@ -214,43 +206,11 @@ def ai_clarify():
     return question[:60]
 
 
-@check("Voice agent: reads the schedule, adds an event, saves it on 'yes'")
-def ai_voice():
-    session = None
-
-    def say(text):
-        nonlocal session
-        reply = client.post(
-            "/api/voice/turn",
-            json={"transcript": text, "session_id": session, "request_id": uuid.uuid4().hex},
-        ).json()
-        session = reply.get("session_id") or session
-        return reply
-
-    first = say("what is on my calendar today?")
-    assert first["action"] == "read_schedule" and first["say"], first
-    pause(20)
-    day = free_day(5)
-    second = say(f"add a project review on {day} at 11 am")
-    assert second["action"] == "delegate" and second["run"], second
-    run = wait(second["run"])
-    assert run["status"] == "awaiting_approval", (run["status"], run.get("error"))
-    pause(20)
-    third = say("yes, save it")
-    assert third["action"] == "approve", third
-    done = wait(third["run"])
-    assert done["status"] == "completed", done
-    for event in client.get("/api/slots", params={"date": day}).json():
-        if "eview" in event["label"]:
-            client.delete(f"/api/slots/{event['id']}")
-    return "read schedule, delegated, approved by voice"
-
-
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--ai", action="store_true", help="also run the assistant and voice agent checks")
+    parser.add_argument("--ai", action="store_true", help="also run the assistant checks")
     args = parser.parse_args()
     print(f"Demo check against {BASE}\n")
     try:
@@ -266,13 +226,12 @@ def main():
         manual_event,
         bad_colour,
         free_time,
-        voice_validation,
         mcp_tools,
     ):
         fn()
     if args.ai:
         print("\nAI checks (a few minutes; paced for Groq's free plan)")
-        for index, fn in enumerate((ai_simple_event, ai_approve_reject, ai_clarify, ai_voice)):
+        for index, fn in enumerate((ai_simple_event, ai_approve_reject, ai_clarify)):
             if index:
                 pause()
             fn()

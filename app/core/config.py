@@ -1,6 +1,7 @@
 """Configuration; secrets belong in .env (git-ignored)."""
 
 import os
+import secrets
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,8 +10,14 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://scheduler:scheduler@127.0.0.1:5432/scheduler")
 DATABASE_DIRECT_URL = os.getenv("DATABASE_DIRECT_URL", DATABASE_URL)
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "local-development-only-change-before-deployment")
+_configured_jwt_secret = os.getenv("JWT_SECRET_KEY", "").strip()
+# Local development gets a random per-process secret, so no known default ever signs a token.
+JWT_SECRET_KEY = _configured_jwt_secret or secrets.token_urlsafe(48)
+JWT_SECRET_GENERATED = not _configured_jwt_secret
 JWT_ALGORITHM = "HS256"
+MIN_JWT_SECRET_LENGTH = 32
+# Set when a reverse proxy in front of the app appends the client address to X-Forwarded-For.
+TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = "lax"
@@ -47,12 +54,12 @@ if LLM_PROVIDER == "groq":
     LLM_API_KEY, LLM_WORKER_MODEL = GROQ_API_KEY, GROQ_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = GROQ_EVALUATOR_MODEL, GROQ_FALLBACK_MODELS
     # Groq's free plan limits tokens per minute per model, so give each model its own share of the work.
-    LLM_LIGHT_ROLES = frozenset({"evaluator", "optimizer", "voice"})
+    LLM_LIGHT_ROLES = frozenset({"evaluator", "optimizer"})
 else:
     LLM_BASE_URL = "https://openrouter.ai/api/v1"
     LLM_API_KEY, LLM_WORKER_MODEL = OPENROUTER_API_KEY, OPENROUTER_WORKER_MODEL
     LLM_EVALUATOR_MODEL, LLM_FALLBACK_MODELS = OPENROUTER_EVALUATOR_MODEL, OPENROUTER_FALLBACK_MODELS
-    LLM_LIGHT_ROLES = frozenset({"evaluator", "voice"})
+    LLM_LIGHT_ROLES = frozenset({"evaluator"})
 GRAPH_VERSION = "calendar-v1"
 PROMPT_VERSION = "2026-11-v2"
 MAX_MODEL_ATTEMPTS = 16
@@ -60,6 +67,18 @@ MAX_WORK_ORDERS = 6
 MAX_OPTIMIZATION_ROUNDS = 2
 ACTIVE_RUN_SECONDS = 300
 LEASE_SECONDS = 90
+
+
+def check_jwt_secret(secret: str, *, generated: bool, cookie_secure: bool) -> None:
+    """Refuse to serve sessions with a missing, placeholder, or short signing secret."""
+    if generated:
+        if cookie_secure:
+            raise RuntimeError("Set JWT_SECRET_KEY to a private value before serving over HTTPS")
+        return
+    if len(secret) < MIN_JWT_SECRET_LENGTH or secret.lower().startswith("replace"):
+        raise RuntimeError(
+            f"JWT_SECRET_KEY must be a private value of at least {MIN_JWT_SECRET_LENGTH} characters"
+        )
 
 
 def psycopg_url(value: str) -> str:
