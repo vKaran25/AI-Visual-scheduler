@@ -204,3 +204,7 @@ docs/demo/claude_desktop_config.json
 htmlcov/
 playwright-report/
 test-results/
+
+# Local research and generated reports
+/reports/
+/research_notes/

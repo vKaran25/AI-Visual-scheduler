@@ -1,8 +1,0 @@
-.git
-.venv
-__pycache__
-*.pyc
-.env
-data
-.pytest_cache
-uvicorn*.log

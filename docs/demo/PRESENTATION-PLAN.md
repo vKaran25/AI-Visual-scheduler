@@ -42,4 +42,4 @@ accounts, and putting it online."
 | What does it cost? | Nothing to run today: free AI models and free tools. |
 | Where is my data? | On this laptop for the demo. Event titles are sent to the AI provider (Groq); a privacy policy is planned. |
 | Is it tested? | Yes: 110 automated tests plus a one-command demo check. |
-| What's next? | Google Calendar sync, accounts, deployment, rebalancing a plan after a missed session. |
+| What's next? | Google Calendar sync, accounts, putting it online, rebalancing a plan after a missed session. |

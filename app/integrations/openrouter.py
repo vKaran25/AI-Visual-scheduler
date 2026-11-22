@@ -128,6 +128,7 @@ def _structured(role, prompt, data, output_type, attempts, before_attempt=None):
                 continue
         for attempt in range(attempts):
             pause = 1.0
+            rate_limited = False
             with _semaphore:
                 if before_attempt:
                     before_attempt()
@@ -153,6 +154,9 @@ def _structured(role, prompt, data, output_type, attempts, before_attempt=None):
                     )
                     if config.LLM_PROVIDER == "groq" and status == 400:
                         strict = False  # this model rejected the strict schema; use best-effort mode
+                    rate_limited = status == 429
+            if rate_limited and model_id != models[-1]:
+                break  # this model's per-minute budget is spent; the next model has its own budget
             if attempt < attempts - 1:
                 time.sleep(pause)
     raise ModelUnavailable(

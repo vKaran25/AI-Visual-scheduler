@@ -2,18 +2,20 @@
 
 A **schema migration** is a versioned change to database tables, indexes, or constraints. A **data migration** transforms or copies records. This release starts fresh and does not copy the old SQLite database.
 
-## Neon setup
+## Database setup
 
-1. Create a Neon project and separate development/staging and production environments.
-2. Copy the pooled connection string into `DATABASE_URL`.
-3. Copy the direct connection string into `DATABASE_DIRECT_URL`.
-4. Retain Neon's TLS parameters, such as `sslmode=require`.
-5. Set private secrets in `.env` locally or the Render environment group. Generate a fresh JWT secret for this fresh-database cutover so cookies from the old user database cannot authenticate new user IDs.
-6. Run `python -m app.db.migrate` before starting the API/worker.
+Use PostgreSQL 16 or later. The easiest local option is `scripts/dev.py up`, which runs an embedded PostgreSQL inside
+the project's virtual environment. Any PostgreSQL works if you set the URLs in `.env`.
+
+1. Set `DATABASE_URL` (application connections) and `DATABASE_DIRECT_URL` (migrations and checkpoints). They can be the
+   same URL.
+2. Keep TLS parameters such as `sslmode=require` if your server needs them.
+3. Set a private `JWT_SECRET_KEY` in `.env`.
+4. Run `python -m app.db.migrate` before starting the API and worker (`scripts/dev.py up` does this for you).
 
 The command applies Alembic application migrations and then initializes/upgrades the pinned LangGraph checkpoint schema. API startup checks the schema; it does not run DDL.
 
-Pooled connections are used for short application transactions. A small direct pool is used for checkpoints. The application does not depend on session advisory locks through Neon's transaction pooler.
+A small direct pool is used for checkpoints. The application does not depend on session advisory locks, so it also works behind a transaction-mode connection pooler.
 
 ## Making a future schema change
 

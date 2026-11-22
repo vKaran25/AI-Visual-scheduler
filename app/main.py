@@ -18,7 +18,7 @@ if APP_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if COOKIE_SECURE and JWT_SECRET_KEY == "local-development-only-change-before-deployment":
-        raise RuntimeError("Set a private JWT_SECRET_KEY before HTTPS deployment")
+        raise RuntimeError("Set a private JWT_SECRET_KEY before serving over HTTPS")
     verify_schema()
     yield
 

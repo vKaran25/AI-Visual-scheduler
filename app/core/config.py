@@ -1,4 +1,4 @@
-"""Configuration; secrets belong in .env or the deployment secret store."""
+"""Configuration; secrets belong in .env (git-ignored)."""
 
 import os
 from pathlib import Path

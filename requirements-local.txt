@@ -1,4 +1,4 @@
 # Everything for local development without Docker: tests plus an embedded PostgreSQL.
-# Used by scripts/dev.py. Not needed on Render or in CI (they provide a real PostgreSQL).
+# Used by scripts/dev.py. Not needed in CI, which provides a real PostgreSQL.
 -r requirements-dev.txt
 pixeltable-pgserver>=0.7,<1

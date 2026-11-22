@@ -2,7 +2,7 @@
 
 ## Boundaries
 
-The API authenticates requests and records durable jobs. A Render worker executes LangGraph. Specialist workers are graph tasks, not separate hosted services. Independent tasks can execute concurrently, with a process-wide limit of two model requests.
+The API authenticates requests and records durable jobs. A separate worker process executes LangGraph. Specialist workers are graph tasks, not separate hosted services. Independent tasks can execute concurrently, with a process-wide limit of two model requests.
 
 Calendar authority lives in PostgreSQL application tables. Models cannot write calendar records or approve their own proposals.
 

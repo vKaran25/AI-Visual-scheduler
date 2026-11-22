@@ -30,7 +30,7 @@ Existing `/api/slots`, `/api/slots/range`, `/api/free`, preset, and custom-prese
 - `GET /api/memory-proposals`: pending suggestions.
 - `POST /api/memory-proposals/{id}/decision`: `{"accept":true}` or false.
 - Existing memory routes support explicit preference management.
-- Google OAuth routes use the public frontend callback through Netlify's API proxy.
+- Google OAuth routes use the configured redirect URI (`GOOGLE_OAUTH_REDIRECT_URI`).
 
 Google writes are asynchronous. Failed outbox jobs can be inspected and retried through the synchronization endpoints. Local success and remote synchronization are separate statuses.
 

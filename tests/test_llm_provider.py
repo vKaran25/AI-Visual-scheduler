@@ -62,7 +62,7 @@ def test_groq_request_has_no_openrouter_fields_and_uses_strict_schema(groq):
     assert saved["key-1"]["provider"] == "groq"
 
 
-def test_rate_limit_waits_for_retry_after_then_succeeds(groq):
+def test_rate_limit_moves_to_the_fallback_model_at_once(groq):
     use, _, pauses, calls = groq
     replies = iter(
         [
@@ -72,7 +72,22 @@ def test_rate_limit_waits_for_retry_after_then_succeeds(groq):
     )
     use(lambda request: next(replies))
     assert openrouter.generate("orchestrator", "s", {}, Reply, "key-2").answer == "ok"
-    assert pauses == [7.0] and len(calls) == 2
+    models = [json.loads(call.content)["model"] for call in calls]
+    assert models == ["openai/gpt-oss-120b", "openai/gpt-oss-20b"] and pauses == []
+
+
+def test_rate_limit_on_the_last_model_waits_for_retry_after(groq):
+    use, _, pauses, calls = groq
+    replies = iter(
+        [
+            httpx.Response(429, headers={"retry-after": "1"}),
+            httpx.Response(429, headers={"retry-after": "7"}),
+            httpx.Response(200, json=completion('{"answer": "ok"}')),
+        ]
+    )
+    use(lambda request: next(replies))
+    assert openrouter.generate("orchestrator", "s", {}, Reply, "key-5").answer == "ok"
+    assert pauses == [7.0] and len(calls) == 3
 
 
 def test_rejected_strict_schema_falls_back_to_best_effort_mode(groq):
