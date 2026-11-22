@@ -1,7 +1,7 @@
 # Demo script: 7 minutes for teachers
 
 **One-line pitch:** "Predestination is a calendar for students. You tell it what you need to get done, by typing
-or speaking, and it finds the time around your classes. It never changes your calendar until you approve."
+it into the box, and it finds the time around your classes. It never changes your calendar until you approve."
 
 Run it from your laptop: it avoids Wi-Fi problems, and the MCP part only
 works locally.
@@ -10,7 +10,7 @@ works locally.
 
 1. `scripts\dev.py seed`, then `scripts\dev.py up`. Wait for "Predestination is starting".
 2. In **Chrome or Edge**, open `http://127.0.0.1:8000/home` (not `localhost`) and sign in as `student@example.com`.
-3. Click **AI Planner**, press **Speak** once and allow the microphone. Say a few words, then press **Stop**.
+3. Click **AI Planner** and type a short request, then press **Ask assistant**. Then clear the box.
 4. Zoom the page to 110% and close notifications. Keep the **Month** view open.
 5. Open Claude and check the Predestination tools are connected (see "MCP setup" below).
 6. **Go easy on AI rehearsals.** With Groq (free plan) you get about 1,000 requests and 200K tokens a day per model, which is
@@ -25,9 +25,9 @@ works locally.
 | 0:00 | Month view with the seeded week | "This is a student's week: lectures, lab, gym, a part-time job. Everything is hand-built, no calendar library." |
 | 0:45 | Type `Study group tomorrow at 6pm for 1 hour` in the bar, click **Fill details** | "It reads the sentence and asks me to confirm AM or PM and the length. It never guesses times." Click **Add to calendar**. |
 | 1:45 | Switch to **Week** and **Day** views | "Same events, different views. Overlaps are rejected, and weekly classes repeat." |
-| 2:15 | Open **AI Planner**, press **Talk**, ask: "What's on my calendar tomorrow?" | It answers out loud from the real calendar. "It talks like a voice assistant, but every fact comes from the database." |
-| 2:45 | Press **Talk**: "Add a review of my project tomorrow at 9 AM" | It says "On it", then reads the draft aloud: "…from 9 to 10 AM. Length assumed: 1 hour, a typical meeting length. Should I save it?" "It fills in the obvious and tells me what it assumed." |
-| 3:30 | Press **Talk**: "Yes, save it" | "Done. It's on your calendar." "Spoken yes only works for new events; anything that removes events needs a tap." |
+| 2:15 | Open **AI Planner**, type: "What's on my calendar tomorrow?" | It answers from the real calendar. "Every fact comes from the database, not from the model." |
+| 2:45 | Type: "Add a review of my project tomorrow at 9 AM" | It shows the draft: "…from 9 to 10 AM. Length assumed: 1 hour, a typical meeting length." "It fills in the obvious and tells me what it assumed." |
+| 3:30 | Type: "Yes, save it", then press **Approve** | "Done. It's on your calendar." "Removals always need a tap on Approve." |
 | 4:15 | Type: `schedule gym at 7` | "It only asks when something is truly unclear, here AM or PM." Answer `PM`, then click **Reject** on the card. "Nothing was added. The human stays in control." |
 | 5:15 | Switch to Claude. Ask: "Using Predestination, what is free on Tuesday evening?" Then "Propose a 2 hour calculus revision at 5pm on Tuesday." Then "Create it." | "The same calendar is available to any AI app through MCP. It proposes first and only saves when I agree." Refresh the web calendar to show the new event. |
 | 6:15 | `docs/demo-architecture.md` diagram | "Free tools only. Next steps: Google Calendar, accounts, putting it online." |
@@ -45,8 +45,6 @@ Keep the **Fill details** path as your safe path. It does not use the AI and alw
 | Problem | Do this |
 |---|---|
 | The assistant takes more than 90 seconds, or shows "could not complete" | Say "free models are busy sometimes", press **Cancel request**, and show **Fill details** instead. Start a new request rather than pressing Retry. |
-| Voice does not work | Say "voice depends on the browser", type the same sentence, and carry on. |
-| Browser microphone prompt appears | Click **Allow** (you did this in step 3). |
 | Page shows "Sign in again" | Sign in again. Sessions last 12 hours here. |
 | Saves fail with a 403 error | You opened `localhost`. Use `127.0.0.1`. |
 | Claude does not list the tools | Skip the MCP step and say it is a local integration. Show the architecture diagram instead. |

@@ -1247,9 +1247,6 @@
     min-height: 38px;
   }
 
-  #ai-voice-status { margin: 0; }
-  #ai-voice-status:empty { display: none; }
-
   .header-user {
     max-width: 160px;
     overflow: hidden;

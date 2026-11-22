@@ -6,10 +6,13 @@ credentials on a shared or public instance.
 """
 
 import argparse
+import sys
 from datetime import timedelta
 
+from sqlalchemy.engine import make_url
 from sqlmodel import Session
 
+from app.core.config import DATABASE_URL
 from app.db.models import utc_now
 from app.db.session import engine, verify_schema
 from app.domain.time import local_now
@@ -18,6 +21,18 @@ from app.services import auth_service, scheduler_service
 DEMO_EMAIL = "student@example.com"
 DEMO_PASSWORD = "predestination-demo"
 DEMO_TIMEZONE = "Asia/Kolkata"
+LOCAL_HOSTS = {"", "localhost", "127.0.0.1", "::1"}
+
+
+def is_local_database(url: str) -> bool:
+    """True when the database is on this machine (TCP loopback or a Unix socket directory)."""
+    parsed = make_url(url)
+    query_host = parsed.query.get("host", "")
+    if isinstance(query_host, tuple):
+        query_host = query_host[0] if query_host else ""
+    host = parsed.host or query_host
+    return host in LOCAL_HOSTS or host.startswith("/")
+
 
 GREEN, BLUE, PURPLE, ORANGE, PINK, GREY = "#2e7d32", "#0277bd", "#7c6aff", "#e65100", "#d81b60", "#546e7a"
 
@@ -73,7 +88,17 @@ def main() -> None:
     parser.add_argument("--email", default=DEMO_EMAIL)
     parser.add_argument("--password", default=DEMO_PASSWORD)
     parser.add_argument("--timezone", default=DEMO_TIMEZONE)
+    parser.add_argument(
+        "--allow-remote-database",
+        action="store_true",
+        help="Seed a database that is not on this machine. Only for a throwaway test database.",
+    )
     args = parser.parse_args()
+    if not is_local_database(DATABASE_URL) and not args.allow_remote_database:
+        sys.exit(
+            "Refusing to create the demo account on a non-local database. The demo password is public; "
+            "pass --allow-remote-database only for a throwaway database."
+        )
     verify_schema()
     result = seed(args.email, args.password, args.timezone)
     print(f"Demo account ready: {result['email']} ({result['timezone']}), {result['events']} events.")

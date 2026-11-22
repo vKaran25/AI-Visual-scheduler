@@ -186,9 +186,3 @@ def generate(role: str, prompt: str, data: dict, output_type, cache_key: str):
         },
     )
     return output
-
-
-def respond(role: str, prompt: str, data: dict, output_type):
-    """Quick conversational call outside a worker run (voice turns). Nothing is cached; no calendar access."""
-    output, _, _ = _structured(role, prompt, data, output_type, attempts=2)
-    return output

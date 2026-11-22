@@ -23,7 +23,7 @@ body { font-family:'DM Sans',sans-serif; }
 #calendar-workspace { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
 #main { min-height:0; position:relative; }
 #calendar-toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:24px 28px 20px; flex-shrink:0; }
-.calendar-eyebrow { font-size:10px; letter-spacing:1.5px; color:var(--text3); font-weight:700; margin:0 0 6px; }
+.calendar-eyebrow { font-size:11px; letter-spacing:1.5px; color:var(--text3); font-weight:700; margin:0 0 6px; }
 #calendar-heading { font-size:28px; line-height:1.2; font-weight:500; letter-spacing:-1px; }
 .calendar-controls { display:flex; align-items:center; gap:16px; }
 .view-switch { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:24px; padding:4px; }
@@ -52,17 +52,17 @@ body { font-family:'DM Sans',sans-serif; }
 .calendar-event { display:block; text-align:left; border:0; border-left:3px solid var(--event-color,var(--accent)); border-radius:4px; background:var(--surface2); color:var(--text); font-size:11px; line-height:1.45; width:100%; padding:3px 5px; margin-bottom:3px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex-shrink:0; }
 .calendar-event.pending { border:1px dashed var(--accent); border-left-width:3px; }
 .calendar-event:hover { background:var(--surface3); }
-.event-time { font-size:10px; color:var(--text2); margin-right:4px; }
+.event-time { font-size:11px; color:var(--text2); margin-right:4px; }
 .more-events { border:0; background:transparent; color:var(--accent2); text-align:left; font-size:10px; padding:1px 4px; }
 #week-view { flex:1; min-height:0; overflow:auto; padding:0 28px 8px; }
 .week-header { position:sticky; top:0; z-index:8; display:grid; grid-template-columns:48px repeat(7,minmax(70px,1fr)); background:var(--bg); min-width:560px; }
-.week-date { text-align:center; padding:9px 2px 12px; border:0; background:var(--bg); color:var(--text2); font-size:10px; }
+.week-date { text-align:center; padding:9px 2px 12px; border:0; background:var(--bg); color:var(--text2); font-size:11px; }
 .week-date strong { display:block; margin:3px auto 0; font-size:18px; font-weight:500; width:30px; border-radius:50%; }
 .week-date.today strong { background:var(--accent); color:var(--bg); }
 .week-date.selected { color:var(--accent2); }
 .week-body { display:grid; grid-template-columns:48px repeat(7,minmax(70px,1fr)); min-width:560px; height:1440px; }
 .week-hours { position:relative; }
-.week-hours span { position:absolute; font-size:10px; color:var(--text3); transform:translateY(-50%); }
+.week-hours span { position:absolute; font-size:11px; color:var(--text3); transform:translateY(-50%); }
 .week-column { position:relative; border-left:1px solid var(--border); background:repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 60px); }
 .week-event { position:absolute; margin:0; white-space:normal; font-size:11px; z-index:2; overflow:hidden; }
 .week-event .event-time { display:block; }
@@ -75,7 +75,7 @@ body { font-family:'DM Sans',sans-serif; }
 #quick-text::placeholder { color:var(--text3); }
 #quick-form:focus-within { border-color:var(--accent); }
 #quick-review { flex-shrink:0; background:var(--accent); color:var(--bg); border:0; border-radius:22px; padding:11px 18px; font-size:12px; font-weight:700; }
-#quick-hint { text-align:center; color:var(--text3); font-size:10px; margin:7px 0 0; }
+#quick-hint { text-align:center; color:var(--text3); font-size:11px; margin:7px 0 0; }
 #tools-panel { width:390px; max-width:100%; display:flex; flex-direction:column; background:var(--surface); border-left:1px solid var(--border); flex-shrink:0; min-height:0; z-index:20; }
 .tools-heading { display:flex; justify-content:space-between; align-items:center; padding:20px 18px 14px; }
 .tools-heading h2 { font-size:18px; font-weight:500; }
@@ -134,10 +134,10 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
   #header #logout-btn,#header #gcal-conn-btn,#header #ai-chat-btn { display:none; }
   #calendar-toolbar { padding:16px 12px 14px; gap:12px; }
   #calendar-heading { font-size:25px; }
-  #calendar-toolbar .calendar-eyebrow { font-size:8px; }
+  #calendar-toolbar .calendar-eyebrow { font-size:10px; }
   .calendar-controls { width:100%; justify-content:space-between; gap:8px; }
   .view-switch button { padding:6px 12px; }
-  .style-picker { font-size:10px; gap:5px; }
+  .style-picker { font-size:11px; gap:5px; }
   .style-picker select { max-width:128px; font-size:11px; }
   #month-view,#week-view { padding:0 8px 4px; }
   .month-grid { gap:3px; min-height:420px; }
@@ -145,11 +145,14 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
   .day-number { font-size:12px; width:24px; height:24px; }
   .calendar-event { font-size:10px; padding:2px 3px; }
   .month-cell .event-time { display:none; }
-  #quick-entry { padding:12px 10px max(10px,env(safe-area-inset-bottom)); }
-  #quick-form { gap:6px; padding-left:10px; }
-  #quick-review { font-size:11px; padding:10px 12px; }
-  #quick-text { font-size:13px; }
-  #quick-hint { font-size:9px; }
+  #quick-entry { padding:10px 10px max(10px,env(safe-area-inset-bottom)); }
+  /* Phones: the text field takes a full row, and the icon and two buttons share the row below it. */
+  #quick-form { flex-wrap:wrap; row-gap:4px; gap:8px; padding:6px 6px 6px 14px; border-radius:20px; }
+  #quick-form .quick-icon { order:1; }
+  #quick-text { order:0; flex:1 1 100%; padding:8px 0 4px; font-size:14px; }
+  #quick-manual { order:2; flex:1 1 auto; text-align:center; padding:10px 8px; }
+  #quick-review { order:3; font-size:12px; padding:10px 14px; }
+  #quick-hint { font-size:11px; }
   #tools-panel { width:min(390px,100%); }
   .mobile-account { display:flex !important; padding:12px; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); }
 }
@@ -163,7 +166,7 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
 .agent-bulk-review::backdrop { background:#0009; }
 .agent-bulk-review ul { padding:10px 20px; }
 
-/* ── Student-friendly assistant, approval card, voice, dialogs ────────────────── */
+/* ── Student-friendly assistant, approval card, dialogs ────────────────── */
 .btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border2); border-radius:var(--radius); padding:8px 12px; font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s, border-color .15s; }
 .btn-secondary:hover:not(:disabled) { background:var(--surface3); border-color:var(--border-hi); }
 .agent-run { border:1px solid var(--border); }
@@ -184,12 +187,6 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
 .agent-reject { background:transparent !important; }
 .user-msg { word-break:break-word; }
 
-/* Voice */
-#ai-mic { display:inline-flex; align-items:center; gap:6px; }
-.rec-dot { width:9px; height:9px; border-radius:50%; background:var(--text3); }
-#ai-mic.recording { border-color:#e53935; color:#e53935; background:rgba(229,57,53,.1); }
-#ai-mic.recording .rec-dot { background:#e53935; animation:pulse 1s ease-in-out infinite; }
-#ai-voice-status { min-height:16px; margin:6px 0 0; font-size:11px; color:var(--text2); }
 @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.8); } }
 .ai-input-row { flex-wrap:wrap; }
 
@@ -212,11 +209,3 @@ html[data-theme="light"] input[type="date"], html[data-theme="light"] input[type
 .toast { max-width:min(420px,calc(100vw - 32px)); overflow-wrap:anywhere; }
 #ai-prompt { height:72px; min-height:72px; resize:vertical; }
 .agent-run .draft-note { margin:6px 0 0; padding:6px 10px; font-size:12px; color:var(--text); background:var(--accent-bg); border-radius:6px; }
-
-/* Talking assistant */
-#ai-mic[data-state="thinking"] .rec-dot { background:var(--accent); animation:pulse 1s ease-in-out infinite; }
-#ai-mic[data-state="speaking"] { border-color:var(--accent); color:var(--accent2); background:var(--accent-bg); }
-#ai-mic[data-state="speaking"] .rec-dot { background:var(--accent); animation:pulse .6s ease-in-out infinite; }
-.handsfree { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
-.voice-msg::before { content:"\1F3A4  "; }
-.voice-reply { border-left:3px solid var(--accent); }

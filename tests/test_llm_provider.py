@@ -27,7 +27,7 @@ def groq(monkeypatch):
     monkeypatch.setattr(config, "LLM_WORKER_MODEL", "openai/gpt-oss-120b")
     monkeypatch.setattr(config, "LLM_EVALUATOR_MODEL", "openai/gpt-oss-20b")
     monkeypatch.setattr(config, "LLM_FALLBACK_MODELS", ["openai/gpt-oss-20b"])
-    monkeypatch.setattr(config, "LLM_LIGHT_ROLES", frozenset({"evaluator", "optimizer", "voice"}))
+    monkeypatch.setattr(config, "LLM_LIGHT_ROLES", frozenset({"evaluator", "optimizer"}))
     monkeypatch.setattr(openrouter.context, "artifact", lambda key: saved.get(key))
     monkeypatch.setattr(openrouter.context, "reserve_attempt", lambda: None)
     monkeypatch.setattr(

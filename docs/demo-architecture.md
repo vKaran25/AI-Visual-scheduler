@@ -5,7 +5,7 @@ worker for the AI assistant, and an MCP server that lets other AI tools use the 
 
 ```mermaid
 flowchart LR
-  student([Student]) -->|"browser: month / week / day, quick-add, voice"| web["Web app<br/>FastAPI + vanilla JS<br/>127.0.0.1:8000"]
+  student([Student]) -->|"browser: month / week / day, quick-add"| web["Web app<br/>FastAPI + vanilla JS<br/>127.0.0.1:8000"]
   student -.->|"asks in chat"| client["AI client<br/>Claude Desktop / Claude Code"]
   client -->|"MCP over stdio<br/>list, find free time, propose, create"| mcp["MCP server<br/>app/mcp_server.py"]
 
@@ -16,13 +16,11 @@ flowchart LR
 
   worker -->|"free models only"| llm["OpenRouter<br/>:free models"]
   worker -->|"public pages, HTTPS only"| search["Web search (research)"]
-  student -.->|"speech to text"| speech["Browser speech service<br/>Chrome / Edge"]
-  speech -.->|"transcript fills the message box"| web
 ```
 
 ## How a request flows
 
-1. **Typed or spoken request** -> text lands in the message box (voice never auto-sends).
+1. **Typed request** -> text lands in the message box and is sent only when you press Ask.
 2. **Assistant** (worker + free model) works out a plan; code, not the model, checks times, overlaps
    and the total hours. Anything unclear becomes a question.
 3. **Draft preview** shows exactly what will be added, changed or removed. Nothing is saved yet.
