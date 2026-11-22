@@ -20,3 +20,13 @@ services:
         sync: false
       - key: DATABASE_DIRECT_URL
         sync: false
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_WORKER_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_EVALUATOR_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_FALLBACK_MODELS
+        value: openai/gpt-oss-120b

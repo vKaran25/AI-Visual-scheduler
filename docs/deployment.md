@@ -24,12 +24,7 @@ The Blueprint creates one **Free** Render web service. FastAPI serves the planne
 2. In the [Render Dashboard](https://dashboard.render.com/), select **New → Blueprint** and connect the scheduler repository through GitHub.
 3. Select **demo-prototype** as the Blueprint branch and use the root `render.yaml`. Confirm the preview shows one **Free** web service named `predestination-demo`.
 4. Enter the two Neon connection strings when prompted, then deploy. If Render does not prompt for a value, add it under the service's **Environment** page before redeploying.
-5. For AI features, open the service's **Environment** page and set one provider:
-
-   | Use | Environment variables |
-   | --- | --- |
-   | Groq | `LLM_PROVIDER=groq` and `GROQ_API_KEY` |
-   | OpenRouter | `LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY` |
+5. For AI features, enter your `GROQ_API_KEY` when the Blueprint prompts for it. On an existing service, add it under **Environment**. The Blueprint selects Groq and uses `openai/gpt-oss-120b` for the worker, evaluator, and fallback.
 
    Save and deploy. The first deploy can run manual scheduling while you finish configuring the AI key. The Blueprint generates `JWT_SECRET_KEY` and enables secure cookies. The app uses Render's public HTTPS URL for its allowed browser origin. If you add a custom domain later, set `APP_BASE_URL` to that HTTPS origin and include it in `CORS_ORIGINS` if you override that setting.
 
